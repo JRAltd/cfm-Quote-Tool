@@ -34,14 +34,51 @@ input[type="date"]{color-scheme:light;}
 function addRow(){let tb=document.getElementById('tb');let r=tb.insertRow();r.innerHTML='<td></td><td contenteditable=true>Item</td><td><input type=number value=1 onchange=calc()></td><td><input type=number value=0 onchange=calc()></td><td class=right>$0.00</td>';calc();}
 function calc(){let t=0;[...document.querySelectorAll('#tb tr')].forEach((r,i)=>{r.cells[0].innerText=i+1;let q=+r.cells[2].children[0].value||0;let p=+r.cells[3].children[0].value||0;let a=q*p;r.cells[4].innerText='$'+a.toFixed(2);t+=a;});document.getElementById('tot').innerText='$'+t.toFixed(2);}
 
+// Calculate and retrieve the correct quote number sequence
+function getQuoteNumber(advance = false) {
+    const yyyy = new Date().getFullYear();
+    let counter = localStorage.getItem('cfm_quote_counter_' + yyyy);
+    
+    // If no counter exists for this year, start at 1
+    if (!counter) {
+        counter = 1;
+    } else {
+        counter = parseInt(counter);
+        if (advance) counter++; // Only advance when a new quote is requested
+    }
+    
+    // Save the current state back to local storage
+    localStorage.setItem('cfm_quote_counter_' + yyyy, counter);
+    
+    // Format to 4 digits (e.g., 0001)
+    return `QT-${yyyy}-${String(counter).padStart(4, '0')}`;
+}
+
 // Initialize the date and quote number
-function initDefaults() {
+function initDefaults(advanceNum = false) {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
+    
     document.getElementById('quoteDate').value = `${yyyy}-${mm}-${dd}`;
-    document.getElementById('quoteNum').innerText = `QT-${yyyy}-0001`;
+    document.getElementById('quoteNum').innerText = getQuoteNumber(advanceNum);
+}
+
+// Custom PDF Download function to set the file name automatically
+function downloadPDF() {
+    const quoteNum = document.getElementById('quoteNum').innerText;
+    let companyName = document.getElementById('companyName').value.trim();
+    if (!companyName) companyName = "Customer"; // Fallback if left blank
+    
+    // Temporarily change the document title so the browser uses it as the default save name
+    const originalTitle = document.title;
+    document.title = `${quoteNum} - ${companyName}`;
+    
+    window.print();
+    
+    // Restore the original title after a slight delay
+    setTimeout(() => { document.title = originalTitle; }, 1000);
 }
 
 // Add a note box below the table
@@ -54,9 +91,9 @@ function addNote() {
     container.appendChild(noteDiv);
 }
 
-// Reset the entire quote form
+// Reset the entire quote form and advance the quote number
 function resetQuote() {
-    if(!confirm("Are you sure you want to clear the entire quote?")) return;
+    if(!confirm("Are you sure you want to clear the entire quote and start a new one?")) return;
     document.getElementById('tb').innerHTML = ''; // Clear items
     document.getElementById('notesArea').innerHTML = ''; // Clear notes
     
@@ -66,11 +103,12 @@ function resetQuote() {
     document.getElementById('contactPhone').value = ''; 
     document.getElementById('contactEmail').value = ''; 
     
-    initDefaults();
+    // Pass 'true' to advance the quote number for the new form
+    initDefaults(true);
     addRow();
 }
 
-window.onload=()=>{ initDefaults(); addRow(); };
+window.onload=()=>{ initDefaults(false); addRow(); };
 </script></head>
 <body><div class="wrap"><div class="card">
 <div class="top">
@@ -82,7 +120,7 @@ window.onload=()=>{ initDefaults(); addRow(); };
 <div>cfm Distributors Inc - Iowa</div>
 <div>4137 109th Street</div>
 <div>Urbandale, IA 50322</div>
-<div class="noPrint" style="margin-top:12px"><button onclick="window.print()">Download PDF</button></div>
+<div class="noPrint" style="margin-top:12px"><button onclick="downloadPDF()">Download PDF</button></div>
 </div>
 </div><hr>
 <div class="top" style="align-items: center; margin-bottom: 20px;">
