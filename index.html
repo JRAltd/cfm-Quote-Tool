@@ -9,13 +9,24 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .info{color:#fff;text-align:right;line-height:1.35;font-size:16px;font-weight:600}
 input{width:100%;padding:10px;border-radius:12px;border:1px solid #334155;background:#020617;color:#fff;box-sizing:border-box;}
 input[type="date"]{width:auto;padding:8px;font-family:Arial;color-scheme:dark;cursor:pointer;}
-button{background:#2563eb;color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer}
+button{background:#2563eb;color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:bold;}
+button.danger{background:#dc2626;}
 table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:8px;border-bottom:1px solid #334155}.right{text-align:right}
+
+/* Note Box Styling */
+.note-box {width: 100%; padding: 10px; border-radius: 12px; border: 1px dashed #334155; background: #020617; color: #fff; margin-top: 8px; box-sizing: border-box; min-height: 44px; outline:none;}
+
+/* Form layout for customer info */
+.customer-info {display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;}
+.contact-row {display: flex; gap: 12px; flex-wrap: wrap;}
+.contact-row > div {flex: 1; min-width: 200px;}
+
 @media print{
 body{background:#fff;color:#000}.noPrint{display:none !important}.card{background:#fff;border:none;padding:0}
 input{border:none;background:#fff;color:#000;padding:0}table,th,td{border:1px solid #000}
 .screenLogo{display:none}.printLogo{display:block}.logo{height:72px}.info{color:#000}
 input[type="date"]{color-scheme:light;}
+.note-box {border: none; background: #fff; color: #000; padding: 4px 0;}
 @page{margin:.45in}
 }
 </style>
@@ -23,18 +34,40 @@ input[type="date"]{color-scheme:light;}
 function addRow(){let tb=document.getElementById('tb');let r=tb.insertRow();r.innerHTML='<td></td><td contenteditable=true>Item</td><td><input type=number value=1 onchange=calc()></td><td><input type=number value=0 onchange=calc()></td><td class=right>$0.00</td>';calc();}
 function calc(){let t=0;[...document.querySelectorAll('#tb tr')].forEach((r,i)=>{r.cells[0].innerText=i+1;let q=+r.cells[2].children[0].value||0;let p=+r.cells[3].children[0].value||0;let a=q*p;r.cells[4].innerText='$'+a.toFixed(2);t+=a;});document.getElementById('tot').innerText='$'+t.toFixed(2);}
 
-// New function to initialize the date and quote number
+// Initialize the date and quote number
 function initDefaults() {
     const today = new Date();
-    
-    // Format date as YYYY-MM-DD for the input picker
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     document.getElementById('quoteDate').value = `${yyyy}-${mm}-${dd}`;
-    
-    // Generate quote number starting with 0001
     document.getElementById('quoteNum').innerText = `QT-${yyyy}-0001`;
+}
+
+// Add a note box below the table
+function addNote() {
+    let container = document.getElementById('notesArea');
+    let noteDiv = document.createElement('div');
+    noteDiv.contentEditable = true;
+    noteDiv.className = 'note-box';
+    noteDiv.innerHTML = 'Enter note here...';
+    container.appendChild(noteDiv);
+}
+
+// Reset the entire quote form
+function resetQuote() {
+    if(!confirm("Are you sure you want to clear the entire quote?")) return;
+    document.getElementById('tb').innerHTML = ''; // Clear items
+    document.getElementById('notesArea').innerHTML = ''; // Clear notes
+    
+    // Clear all customer info fields
+    document.getElementById('companyName').value = ''; 
+    document.getElementById('contactName').value = ''; 
+    document.getElementById('contactPhone').value = ''; 
+    document.getElementById('contactEmail').value = ''; 
+    
+    initDefaults();
+    addRow();
 }
 
 window.onload=()=>{ initDefaults(); addRow(); };
@@ -52,12 +85,41 @@ window.onload=()=>{ initDefaults(); addRow(); };
 <div class="noPrint" style="margin-top:12px"><button onclick="window.print()">Download PDF</button></div>
 </div>
 </div><hr>
-<div class="top" style="align-items: center; margin-bottom: 16px;">
+<div class="top" style="align-items: center; margin-bottom: 20px;">
 <div><strong>Quote #</strong> <span id="quoteNum"></span></div>
 <div><strong>Date</strong> <input type="date" id="quoteDate"></div>
 </div>
-<label>Customer Name</label><input style="max-width:420px; margin-top:8px;">
+
+<div class="customer-info">
+    <div>
+        <label>Company Name</label>
+        <input id="companyName" style="max-width:420px; margin-top:4px;">
+    </div>
+    <div class="contact-row">
+        <div>
+            <label>Contact Name</label>
+            <input id="contactName" style="margin-top:4px;">
+        </div>
+        <div>
+            <label>Phone Number</label>
+            <input id="contactPhone" type="tel" style="margin-top:4px;">
+        </div>
+        <div>
+            <label>Email</label>
+            <input id="contactEmail" type="email" style="margin-top:4px;">
+        </div>
+    </div>
+</div>
+
 <table><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Price</th><th class="right">Amount</th></tr></thead><tbody id="tb"></tbody></table>
-<div class="noPrint" style="margin-top:10px"><button onclick="addRow()">Add Line Item</button></div>
+
+<div id="notesArea"></div>
+
+<div class="noPrint" style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+    <button onclick="addRow()">Add Line Item</button>
+    <button onclick="addNote()">Add Note Box</button>
+    <button onclick="resetQuote()" class="danger">Reset Quote</button>
+</div>
+
 <div class="right" style="font-size:30px;font-weight:bold;margin-top:16px">Total: <span id="tot">$0.00</span></div>
 </div></div></body></html>
