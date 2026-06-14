@@ -11,6 +11,7 @@ input{width:100%;padding:10px;border-radius:12px;border:1px solid #334155;backgr
 input[type="date"]{width:auto;padding:8px;font-family:Arial;color-scheme:dark;cursor:pointer;}
 button{background:#2563eb;color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:bold;}
 button.danger{background:#dc2626;}
+button.small-delete{background:#dc2626;padding:6px 12px;font-size:14px;margin:0;}
 table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:8px;border-bottom:1px solid #334155}.right{text-align:right}
 
 /* Note Box Styling */
@@ -31,8 +32,9 @@ input[type="date"]{color-scheme:light;}
 }
 </style>
 <script>
-function addRow(){let tb=document.getElementById('tb');let r=tb.insertRow();r.innerHTML='<td></td><td contenteditable=true>Item</td><td><input type=number value=1 onchange=calc()></td><td><input type=number value=0 onchange=calc()></td><td class=right>$0.00</td>';calc();}
-function calc(){let t=0;[...document.querySelectorAll('#tb tr')].forEach((r,i)=>{r.cells[0].innerText=i+1;let q=+r.cells[2].children[0].value||0;let p=+r.cells[3].children[0].value||0;let a=q*p;r.cells[4].innerText='$'+a.toFixed(2);t+=a;});document.getElementById('tot').innerText='$'+t.toFixed(2);}
+function addRow(){let tb=document.getElementById('tb');let r=tb.insertRow();r.innerHTML='<td></td><td contenteditable=true>Item</td><td><input type=number value=1 onchange=calc()></td><td><input type=number value=0 onchange=calc()></td><td class=right>$0.00</td><td class=noPrint><button class="small-delete" onclick="deleteRow(this)">Delete</button></td>';calc();}
+function deleteRow(btn){btn.closest('tr').remove();calc();}
+function calc(){let t=0;[...document.querySelectorAll('#tb tr')].forEach((r,i)=>{r.cells[0].innerText=i+1;let q=+r.cells[2].children[0].value||0;let p=+r.cells[3].children[0].value||0;let a=q*p;r.cells[4].innerText='$'+a.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');t+=a;});document.getElementById('tot').innerText='$'+t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 
 // Calculate and retrieve the correct quote number sequence
 function getQuoteNumber(advance = false) {
@@ -149,7 +151,7 @@ window.onload=()=>{ initDefaults(false); addRow(); };
     </div>
 </div>
 
-<table><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Price</th><th class="right">Amount</th></tr></thead><tbody id="tb"></tbody></table>
+<table><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Price</th><th class="right">Amount</th><th class="noPrint"></th></tr></thead><tbody id="tb"></tbody></table>
 
 <div id="notesArea"></div>
 
