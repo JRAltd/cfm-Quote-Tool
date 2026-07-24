@@ -55,6 +55,7 @@ table.items td{padding:10px 12px;border-bottom:1px solid var(--gray-line);font-s
 table.items td.right{text-align:right}
 table.items td[contenteditable]{outline:none}
 table.items input{width:100%;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px}
+table.items input.model-input{color:var(--muted)}
 select.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
 
 /* Subtotal bar */
@@ -160,7 +161,8 @@ function addRow(){
       '<option>Special Order</option>'+
     '</select></td>'+
     '<td><input type=number value=1 min=0 onchange="calc()" style="max-width:70px"></td>'+
-    '<td contenteditable=true>Item description</td>'+
+    '<td><input type=text class="model-input" placeholder="Model/Part #"></td>'+
+    '<td><input type=text placeholder="Item description"></td>'+
     '<td><input type=number value=0 min=0 step=0.01 onchange="calc()"></td>'+
     '<td class=right>$0.00</td>'+
     '<td class=noPrint><button class="small-delete" onclick="deleteRow(this)">Delete</button></td>';
@@ -171,9 +173,9 @@ function calc(){
   let t=0;
   [...document.querySelectorAll('#tb tr')].forEach((r)=>{
     let q=+r.cells[1].children[0].value||0;
-    let p=+r.cells[3].children[0].value||0;
+    let p=+r.cells[4].children[0].value||0;
     let a=q*p;
-    r.cells[4].innerText='$'+a.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    r.cells[5].innerText='$'+a.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     t+=a;
   });
   document.getElementById('tot').innerText='$'+t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
@@ -292,8 +294,9 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 <table class="items">
   <thead>
     <tr>
-      <th style="width:14%">Availability</th>
-      <th style="width:8%">Qty</th>
+      <th style="width:13%">Availability</th>
+      <th style="width:7%">Qty</th>
+      <th style="width:14%">Model/Part #</th>
       <th>Item Name/Description</th>
       <th class="right" style="width:12%">Price</th>
       <th class="right" style="width:12%">Extended</th>
