@@ -105,8 +105,8 @@ function renderDropdown(matches, query){
     return;
   }
   dd.innerHTML = matches.map((c,i)=>{
-    const [name,contact,phone,email] = c;
-    const metaParts = [contact, phone, email].filter(Boolean).join(' \u00b7 ');
+    const [name,contact,phone,,,,acct] = c;
+    const metaParts = [acct ? ('Acct# '+acct) : '', contact, phone].filter(Boolean).join(' \u00b7 ');
     return '<div class="dropdown-item" data-idx="'+i+'" onclick="selectCustomer('+i+')">'+
       '<div class="dname">'+escapeHtml(name)+'</div>'+
       (metaParts ? '<div class="dmeta">'+escapeHtml(metaParts)+'</div>' : '') +
@@ -133,13 +133,12 @@ function selectCustomer(idx){
   const c = dd._matches[idx];
   if(!c) return;
   selectedCustomer = c;
-  const [name,contact,phone,email,rep] = c;
+  const [name,contact,phone,,,,acct] = c;
   document.getElementById('customerSearch').value = name;
   document.getElementById('contactName').value = contact || '';
   document.getElementById('contactPhone').value = phone || '';
-  document.getElementById('contactEmail').value = email || '';
-  document.getElementById('quotedBy').value = rep || '';
-  document.getElementById('quotedByDisplay').innerText = rep || '\u2014';
+  document.getElementById('acctNumber').value = acct || '';
+  // Quoted By and Email are intentionally NOT auto-filled — enter manually if needed.
   dd.classList.remove('show');
 }
 
@@ -232,6 +231,7 @@ function resetQuote() {
     document.getElementById('tb').innerHTML = '';
     document.getElementById('notesArea').innerHTML = '';
     document.getElementById('customerSearch').value = '';
+    document.getElementById('acctNumber').value = '';
     document.getElementById('contactName').value = '';
     document.getElementById('contactPhone').value = '';
     document.getElementById('contactEmail').value = '';
@@ -283,9 +283,10 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 </table>
 
 <div class="contact-row">
+  <div><label>Account #</label><input id="acctNumber"></div>
   <div><label>Contact Name</label><input id="contactName"></div>
   <div><label>Phone Number</label><input id="contactPhone" type="tel"></div>
-  <div><label>Email</label><input id="contactEmail" type="email"></div>
+  <div><label>Email</label><input id="contactEmail" type="email" placeholder="Enter manually"></div>
 </div>
 
 <table class="items">
