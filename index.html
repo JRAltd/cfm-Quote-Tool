@@ -133,14 +133,12 @@ function selectCustomer(idx){
   const c = dd._matches[idx];
   if(!c) return;
   selectedCustomer = c;
-  const [name,contact,phone,,rep,,acct] = c;
+  const [name,contact,phone,,,,acct] = c;
   document.getElementById('customerSearch').value = name;
   document.getElementById('contactName').value = contact || '';
   document.getElementById('contactPhone').value = phone || '';
   document.getElementById('acctNumber').value = acct || '';
-  document.getElementById('quotedBy').value = rep || '';
-  document.getElementById('quotedByDisplay').innerText = rep || '\u2014';
-  // Email is intentionally NOT auto-filled — enter manually if needed.
+  // Quoted By and Email are intentionally NOT auto-filled — enter manually if needed.
   dd.classList.remove('show');
 }
 
