@@ -2,88 +2,222 @@
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>cfm Quote Tool</title>
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.wrap{max-width:1200px;margin:auto;padding:24px}.card{background:#0f172a;border:1px solid #1e293b;border-radius:24px;padding:24px}
+:root{
+  --navy:#12294d;
+  --navy-dark:#0d1f3a;
+  --gold:#f2b705;
+  --gray-bg:#eef0f2;
+  --gray-line:#d7dbe0;
+  --text:#1a1a1a;
+  --muted:#6b7280;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f5f7;color:var(--text)}
+.wrap{max-width:1100px;margin:auto;padding:24px}
+.card{background:#fff;border:1px solid var(--gray-line);border-radius:6px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+
+/* Header */
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
-.logo{height:84px;max-width:480px}.printLogo{display:none}
-.info{color:#fff;text-align:right;line-height:1.35;font-size:16px;font-weight:600}
-input{width:100%;padding:10px;border-radius:12px;border:1px solid #334155;background:#020617;color:#fff;box-sizing:border-box;}
-input[type="date"]{width:auto;padding:8px;font-family:Arial;color-scheme:dark;cursor:pointer;}
-button{background:#2563eb;color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:bold;}
-button.danger{background:#dc2626;}
-button.small-delete{background:#dc2626;padding:6px 12px;font-size:14px;margin:0;}
-table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:8px;border-bottom:1px solid #334155}.right{text-align:right}
+.logo{height:56px}
+.brandTitle{font-family:Georgia,'Times New Roman',serif;font-size:44px;color:var(--navy);text-align:right;letter-spacing:.5px}
+.dateLine{text-align:right;font-size:13px;color:var(--muted);margin-top:6px;letter-spacing:.5px}
+.dateLine b{color:var(--text)}
+hr.accent{border:none;border-top:4px solid var(--gold);margin:18px 0 20px}
 
-/* Note Box Styling */
-.note-box {width: 100%; padding: 10px; border-radius: 12px; border: 1px dashed #334155; background: #020617; color: #fff; margin-top: 8px; box-sizing: border-box; min-height: 44px; outline:none;}
+/* Meta table (Customer / Quote Date / Expiration / PO#-Job / Quote#) */
+.meta-table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px}
+.meta-table th{background:var(--gray-bg);text-align:left;padding:10px 12px;font-size:12px;text-transform:none;color:var(--text);border-bottom:1px solid var(--gray-line)}
+.meta-table td{padding:10px 12px;vertical-align:top;border-bottom:1px solid var(--gray-line)}
+.meta-table input{border:1px solid var(--gray-line);border-radius:6px;padding:8px;font-size:14px;width:100%;background:#fff;color:var(--text)}
+.meta-table input[type="date"]{color-scheme:light}
 
-/* Form layout for customer info */
-.customer-info {display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;}
-.contact-row {display: flex; gap: 12px; flex-wrap: wrap;}
-.contact-row > div {flex: 1; min-width: 200px;}
+/* Customer search */
+.search-wrap{position:relative}
+#customerSearch{font-weight:bold}
+.dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray-line);border-top:none;border-radius:0 0 6px 6px;max-height:280px;overflow-y:auto;z-index:50;box-shadow:0 6px 14px rgba(0,0,0,.12);display:none}
+.dropdown.show{display:block}
+.dropdown-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f1f3;font-size:13px}
+.dropdown-item:hover,.dropdown-item.active{background:var(--gray-bg)}
+.dropdown-item .dname{font-weight:bold;color:var(--navy)}
+.dropdown-item .dmeta{color:var(--muted);font-size:12px;margin-top:2px}
+.dropdown-empty{padding:10px 12px;color:var(--muted);font-size:13px}
+
+.contact-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.contact-row>div{flex:1;min-width:180px}
+.contact-row label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.contact-row input{border:1px solid var(--gray-line);border-radius:6px;padding:8px;font-size:14px;width:100%}
+
+/* Items table */
+table.items{width:100%;border-collapse:collapse;margin-top:6px}
+table.items thead th{background:var(--gray-bg);text-align:left;padding:10px 12px;font-size:13px;border-bottom:2px solid var(--gray-line)}
+table.items thead th.right{text-align:right}
+table.items td{padding:10px 12px;border-bottom:1px solid var(--gray-line);font-size:14px;vertical-align:top}
+table.items td.right{text-align:right}
+table.items td[contenteditable]{outline:none}
+table.items input{width:100%;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px}
+select.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
+
+/* Subtotal bar */
+.subtotal-bar{background:var(--navy);color:#fff;display:flex;justify-content:flex-end;align-items:center;gap:18px;padding:14px 20px;border-radius:4px;margin-top:4px}
+.subtotal-bar .label{color:var(--gold);font-weight:bold;letter-spacing:1px;font-size:14px}
+.subtotal-bar .amount{font-size:22px;font-weight:bold}
+
+/* Disclaimer box */
+.disclaimer{background:#fdf6df;border:1px solid #f1e3ad;border-left:4px solid var(--gold);border-radius:4px;padding:14px 18px;margin-top:18px;font-size:13px}
+.disclaimer .line1{font-weight:bold;color:var(--text)}
+.disclaimer .line2{color:var(--muted);margin-top:4px;font-style:italic}
+.disclaimer .line2 b{color:var(--text);font-style:normal}
+
+/* Note box */
+.note-box{width:100%;padding:10px;border-radius:6px;border:1px dashed var(--gray-line);background:#fafafa;color:var(--text);margin-top:8px;box-sizing:border-box;min-height:44px;outline:none;font-size:14px}
+
+/* Buttons */
+button{background:var(--navy);color:#fff;border:0;padding:11px 18px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:14px}
+button:hover{background:var(--navy-dark)}
+button.gold{background:var(--gold);color:var(--navy-dark)}
+button.danger{background:#b91c1c}
+button.small-delete{background:#b91c1c;padding:6px 12px;font-size:13px;margin:0}
+
+.quotedBy{margin-top:6px;font-size:12px;color:var(--muted)}
+.quotedBy input{border:1px solid var(--gray-line);border-radius:6px;padding:5px 8px;font-size:12px;width:160px;margin-left:4px}
 
 @media print{
-body{background:#fff;color:#000}.noPrint{display:none !important}.card{background:#fff;border:none;padding:0}
-input{border:none;background:#fff;color:#000;padding:0}table,th,td{border:1px solid #000}
-.screenLogo{display:none}.printLogo{display:block}.logo{height:72px}.info{color:#000}
-input[type="date"]{color-scheme:light;}
-.note-box {border: none; background: #fff; color: #000; padding: 4px 0;}
-@page{margin:.45in}
+  body{background:#fff}
+  .wrap{padding:0;max-width:100%}
+  .card{border:none;box-shadow:none;padding:0}
+  .noPrint{display:none !important}
+  .dropdown{display:none !important}
+  .meta-table input,.contact-row input,table.items input,.quotedBy input{border:none;padding:0;background:transparent}
+  select.avail{border:none;background:transparent;-webkit-appearance:none;appearance:none}
+  @page{margin:.5in}
 }
 </style>
+<script src="customers.js"></script>
 <script>
-function addRow(){let tb=document.getElementById('tb');let r=tb.insertRow();r.innerHTML='<td></td><td contenteditable=true>Item</td><td><input type=number value=1 onchange=calc()></td><td><input type=number value=0 onchange=calc()></td><td class=right>$0.00</td><td class=noPrint><button class="small-delete" onclick="deleteRow(this)">Delete</button></td>';calc();}
-function deleteRow(btn){btn.closest('tr').remove();calc();}
-function calc(){let t=0;[...document.querySelectorAll('#tb tr')].forEach((r,i)=>{r.cells[0].innerText=i+1;let q=+r.cells[2].children[0].value||0;let p=+r.cells[3].children[0].value||0;let a=q*p;r.cells[4].innerText='$'+a.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');t+=a;});document.getElementById('tot').innerText='$'+t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+let selectedCustomer = null;
 
-// Calculate and retrieve the correct quote number sequence
+/* ---------- Customer search ---------- */
+function renderDropdown(matches, query){
+  const dd = document.getElementById('customerDropdown');
+  if(!matches.length){
+    dd.innerHTML = '<div class="dropdown-empty">No customers found for "'+escapeHtml(query)+'"</div>';
+    dd.classList.add('show');
+    return;
+  }
+  dd.innerHTML = matches.map((c,i)=>{
+    const [name,contact,phone,email] = c;
+    const metaParts = [contact, phone, email].filter(Boolean).join(' \u00b7 ');
+    return '<div class="dropdown-item" data-idx="'+i+'" onclick="selectCustomer('+i+')">'+
+      '<div class="dname">'+escapeHtml(name)+'</div>'+
+      (metaParts ? '<div class="dmeta">'+escapeHtml(metaParts)+'</div>' : '') +
+      '</div>';
+  }).join('');
+  dd.classList.add('show');
+  dd._matches = matches;
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function onCustomerSearchInput(){
+  const q = document.getElementById('customerSearch').value.trim().toLowerCase();
+  selectedCustomer = null;
+  if(q.length < 2){ document.getElementById('customerDropdown').classList.remove('show'); return; }
+  const matches = CUSTOMERS.filter(c => c[0].toLowerCase().includes(q)).slice(0,20);
+  renderDropdown(matches, q);
+}
+
+function selectCustomer(idx){
+  const dd = document.getElementById('customerDropdown');
+  const c = dd._matches[idx];
+  if(!c) return;
+  selectedCustomer = c;
+  const [name,contact,phone,email,rep] = c;
+  document.getElementById('customerSearch').value = name;
+  document.getElementById('contactName').value = contact || '';
+  document.getElementById('contactPhone').value = phone || '';
+  document.getElementById('contactEmail').value = email || '';
+  document.getElementById('quotedBy').value = rep || '';
+  document.getElementById('quotedByDisplay').innerText = rep || '\u2014';
+  dd.classList.remove('show');
+}
+
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('customerSearchWrap');
+  if(wrap && !wrap.contains(e.target)) document.getElementById('customerDropdown').classList.remove('show');
+});
+
+/* ---------- Line items ---------- */
+function addRow(){
+  let tb=document.getElementById('tb');
+  let r=tb.insertRow();
+  r.innerHTML =
+    '<td><select class="avail">'+
+      '<option>In Stock</option>'+
+      '<option selected>2-3 Weeks</option>'+
+      '<option>4-6 Weeks</option>'+
+      '<option>6-8 Weeks</option>'+
+      '<option>Special Order</option>'+
+    '</select></td>'+
+    '<td><input type=number value=1 min=0 onchange="calc()" style="max-width:70px"></td>'+
+    '<td contenteditable=true>Item description</td>'+
+    '<td><input type=number value=0 min=0 step=0.01 onchange="calc()"></td>'+
+    '<td class=right>$0.00</td>'+
+    '<td class=noPrint><button class="small-delete" onclick="deleteRow(this)">Delete</button></td>';
+  calc();
+}
+function deleteRow(btn){btn.closest('tr').remove();calc();}
+function calc(){
+  let t=0;
+  [...document.querySelectorAll('#tb tr')].forEach((r)=>{
+    let q=+r.cells[1].children[0].value||0;
+    let p=+r.cells[3].children[0].value||0;
+    let a=q*p;
+    r.cells[4].innerText='$'+a.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+    t+=a;
+  });
+  document.getElementById('tot').innerText='$'+t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
+
+/* ---------- Quote number ---------- */
 function getQuoteNumber(advance = false) {
     const yyyy = new Date().getFullYear();
     let counter = localStorage.getItem('cfm_quote_counter_' + yyyy);
-    
-    // If no counter exists for this year, start at 1
-    if (!counter) {
-        counter = 1;
-    } else {
-        counter = parseInt(counter);
-        if (advance) counter++; // Only advance when a new quote is requested
-    }
-    
-    // Save the current state back to local storage
+    if (!counter) { counter = 1; }
+    else { counter = parseInt(counter); if (advance) counter++; }
     localStorage.setItem('cfm_quote_counter_' + yyyy, counter);
-    
-    // Format to 4 digits (e.g., 0001)
     return `QT-${yyyy}-${String(counter).padStart(4, '0')}`;
 }
 
-// Initialize the date and quote number
 function initDefaults(advanceNum = false) {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    
     document.getElementById('quoteDate').value = `${yyyy}-${mm}-${dd}`;
-    document.getElementById('quoteNum').innerText = getQuoteNumber(advanceNum);
+
+    const exp = new Date(today);
+    exp.setDate(exp.getDate() + 30);
+    const emm = String(exp.getMonth() + 1).padStart(2, '0');
+    const edd = String(exp.getDate()).padStart(2, '0');
+    document.getElementById('expDate').value = `${exp.getFullYear()}-${emm}-${edd}`;
+
+    const qn = getQuoteNumber(advanceNum);
+    document.getElementById('quoteNum').innerText = qn;
+    document.getElementById('quoteNumRef').innerText = qn;
 }
 
-// Custom PDF Download function to set the file name automatically
 function downloadPDF() {
     const quoteNum = document.getElementById('quoteNum').innerText;
-    let companyName = document.getElementById('companyName').value.trim();
-    if (!companyName) companyName = "Customer"; // Fallback if left blank
-    
-    // Temporarily change the document title so the browser uses it as the default save name
+    let companyName = document.getElementById('customerSearch').value.trim();
+    if (!companyName) companyName = "Customer";
     const originalTitle = document.title;
     document.title = `${quoteNum} - ${companyName}`;
-    
     window.print();
-    
-    // Restore the original title after a slight delay
     setTimeout(() => { document.title = originalTitle; }, 1000);
 }
 
-// Add a note box below the table
 function addNote() {
     let container = document.getElementById('notesArea');
     let noteDiv = document.createElement('div');
@@ -93,19 +227,18 @@ function addNote() {
     container.appendChild(noteDiv);
 }
 
-// Reset the entire quote form and advance the quote number
 function resetQuote() {
     if(!confirm("Are you sure you want to clear the entire quote and start a new one?")) return;
-    document.getElementById('tb').innerHTML = ''; // Clear items
-    document.getElementById('notesArea').innerHTML = ''; // Clear notes
-    
-    // Clear all customer info fields
-    document.getElementById('companyName').value = ''; 
-    document.getElementById('contactName').value = ''; 
-    document.getElementById('contactPhone').value = ''; 
-    document.getElementById('contactEmail').value = ''; 
-    
-    // Pass 'true' to advance the quote number for the new form
+    document.getElementById('tb').innerHTML = '';
+    document.getElementById('notesArea').innerHTML = '';
+    document.getElementById('customerSearch').value = '';
+    document.getElementById('contactName').value = '';
+    document.getElementById('contactPhone').value = '';
+    document.getElementById('contactEmail').value = '';
+    document.getElementById('poJob').value = '';
+    document.getElementById('quotedBy').value = '';
+    document.getElementById('quotedByDisplay').innerText = '\u2014';
+    selectedCustomer = null;
     initDefaults(true);
     addRow();
 }
@@ -113,53 +246,85 @@ function resetQuote() {
 window.onload=()=>{ initDefaults(false); addRow(); };
 </script></head>
 <body><div class="wrap"><div class="card">
+
 <div class="top">
-<div>
-<img src="logo-white.png" class="logo screenLogo">
-<img src="logo-black.png" class="logo printLogo">
+  <div><img src="logo-black.png" class="logo"></div>
+  <div>
+    <div class="brandTitle">Proposal.</div>
+    <div class="dateLine">DATE <b><span id="today"></span></b></div>
+  </div>
 </div>
-<div class="info">
-<div>cfm Distributors Inc - Iowa</div>
-<div>4137 109th Street</div>
-<div>Urbandale, IA 50322</div>
-<div class="noPrint" style="margin-top:12px"><button onclick="downloadPDF()">Download PDF</button></div>
-</div>
-</div><hr>
-<div class="top" style="align-items: center; margin-bottom: 20px;">
-<div><strong>Quote #</strong> <span id="quoteNum"></span></div>
-<div><strong>Date</strong> <input type="date" id="quoteDate"></div>
+<hr class="accent">
+
+<table class="meta-table">
+  <thead>
+    <tr>
+      <th style="width:32%">Customer</th>
+      <th style="width:15%">Quote Date</th>
+      <th style="width:15%">Expiration Date</th>
+      <th style="width:20%">PO# / Job</th>
+      <th style="width:18%">Quote #</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <div class="search-wrap" id="customerSearchWrap">
+          <input id="customerSearch" placeholder="Search customer name..." autocomplete="off" oninput="onCustomerSearchInput()">
+          <div class="dropdown" id="customerDropdown"></div>
+        </div>
+      </td>
+      <td><input type="date" id="quoteDate"></td>
+      <td><input type="date" id="expDate"></td>
+      <td><input id="poJob" placeholder="PO# / Job name"></td>
+      <td><strong id="quoteNum"></strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="contact-row">
+  <div><label>Contact Name</label><input id="contactName"></div>
+  <div><label>Phone Number</label><input id="contactPhone" type="tel"></div>
+  <div><label>Email</label><input id="contactEmail" type="email"></div>
 </div>
 
-<div class="customer-info">
-    <div>
-        <label>Company Name</label>
-        <input id="companyName" style="max-width:420px; margin-top:4px;">
-    </div>
-    <div class="contact-row">
-        <div>
-            <label>Contact Name</label>
-            <input id="contactName" style="margin-top:4px;">
-        </div>
-        <div>
-            <label>Phone Number</label>
-            <input id="contactPhone" type="tel" style="margin-top:4px;">
-        </div>
-        <div>
-            <label>Email</label>
-            <input id="contactEmail" type="email" style="margin-top:4px;">
-        </div>
-    </div>
-</div>
-
-<table><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Price</th><th class="right">Amount</th><th class="noPrint"></th></tr></thead><tbody id="tb"></tbody></table>
+<table class="items">
+  <thead>
+    <tr>
+      <th style="width:14%">Availability</th>
+      <th style="width:8%">Qty</th>
+      <th>Item Name/Description</th>
+      <th class="right" style="width:12%">Price</th>
+      <th class="right" style="width:12%">Extended</th>
+      <th class="noPrint" style="width:70px"></th>
+    </tr>
+  </thead>
+  <tbody id="tb"></tbody>
+</table>
 
 <div id="notesArea"></div>
 
 <div class="noPrint" style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
     <button onclick="addRow()">Add Line Item</button>
     <button onclick="addNote()">Add Note Box</button>
+    <button class="gold" onclick="downloadPDF()">Download PDF</button>
     <button onclick="resetQuote()" class="danger">Reset Quote</button>
 </div>
 
-<div class="right" style="font-size:30px;font-weight:bold;margin-top:16px">Total: <span id="tot">$0.00</span></div>
-</div></div></body></html>
+<div class="subtotal-bar">
+  <span class="label">SUBTOTAL</span>
+  <span class="amount" id="tot">$0.00</span>
+</div>
+
+<div class="disclaimer">
+  <div class="line1">Pricing excludes applicable taxes and shipping costs unless otherwise noted.</div>
+  <div class="line2">Prices subject to change without notice. Quoted by <b><span id="quotedByDisplay">\u2014</span></b>. Ref: <span id="quoteNumRef"></span></div>
+</div>
+
+<div class="quotedBy noPrint">
+  Quoted by: <input id="quotedBy" placeholder="Sales rep name" oninput="document.getElementById('quotedByDisplay').innerText = this.value || '\u2014'">
+</div>
+
+</div></div>
+<script>document.getElementById('today').innerText = new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});</script>
+</body></html>
