@@ -58,10 +58,14 @@ table.items input{width:100%;border:1px solid var(--gray-line);border-radius:6px
 table.items input.model-input{color:var(--muted)}
 input.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
 
+/* Quote # box */
+.qn-box{border:1px solid var(--gray-line);border-radius:6px;padding:8px 12px;font-size:14px;font-weight:bold;background:#fff;color:var(--text)}
+
 /* Subtotal bar */
-.subtotal-bar{background:var(--navy);color:#fff;display:flex;justify-content:flex-end;align-items:center;gap:18px;padding:14px 20px;border-radius:4px;margin-top:4px}
+.subtotal-bar{background:var(--navy);color:#fff;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:18px;padding:14px 20px;border-radius:4px;margin-top:4px}
 .subtotal-bar .label{color:var(--gold);font-weight:bold;letter-spacing:1px;font-size:14px}
 .subtotal-bar .amount{font-size:22px;font-weight:bold}
+.freight-input{width:110px;border:1px solid var(--gray-line);border-radius:6px;padding:6px 8px;font-size:16px;font-weight:bold;background:#fff;color:var(--navy-dark);text-align:right}
 
 /* Disclaimer box */
 .disclaimer{background:#fdf6df;border:1px solid #f1e3ad;border-left:4px solid var(--gold);border-radius:4px;padding:14px 18px;margin-top:18px;font-size:13px}
@@ -90,6 +94,8 @@ button.small-delete{background:#b91c1c;padding:6px 12px;font-size:13px;margin:0}
   .dropdown{display:none !important}
   .meta-table input,.contact-row input,table.items input,.quotedBy input{border:none;padding:0;background:transparent}
   input.avail{border:none;background:transparent}
+  .qn-box{border:none;padding:0;background:transparent}
+  .freight-input{border:none;padding:0;background:transparent;color:#fff}
   @page{margin:.5in}
 }
 </style>
@@ -173,6 +179,9 @@ function calc(){
     t+=a;
   });
   document.getElementById('tot').innerText='$'+t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  let freight=+document.getElementById('freight').value||0;
+  let grand=t+freight;
+  document.getElementById('grandTot').innerText='$'+grand.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
 }
 
 /* ---------- Quote number ---------- */
@@ -218,6 +227,9 @@ function addNote() {
     noteDiv.contentEditable = true;
     noteDiv.className = 'note-box';
     noteDiv.innerHTML = 'Enter note here...';
+    noteDiv.addEventListener('focus', () => {
+      if(noteDiv.innerText === 'Enter note here...'){ noteDiv.innerText = ''; }
+    }, { once: true });
     container.appendChild(noteDiv);
 }
 
@@ -233,6 +245,7 @@ function resetQuote() {
     document.getElementById('poJob').value = '';
     document.getElementById('quotedBy').value = '';
     document.getElementById('quotedByDisplay').innerText = '\u2014';
+    document.getElementById('freight').value = '0';
     selectedCustomer = null;
     initDefaults(true);
     addRow();
@@ -272,7 +285,7 @@ window.onload=()=>{ initDefaults(false); addRow(); };
       <td><input type="date" id="quoteDate"></td>
       <td><input type="date" id="expDate"></td>
       <td><input id="poJob" placeholder="PO# / Job name"></td>
-      <td><strong id="quoteNum"></strong></td>
+      <td><div class="qn-box" id="quoteNum"></div></td>
     </tr>
   </tbody>
 </table>
@@ -311,6 +324,10 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 <div class="subtotal-bar">
   <span class="label">SUBTOTAL</span>
   <span class="amount" id="tot">$0.00</span>
+  <span class="label">FREIGHT $</span>
+  <input type="number" id="freight" class="freight-input" value="0" min="0" step="0.01" onchange="calc()">
+  <span class="label">TOTAL</span>
+  <span class="amount" id="grandTot">$0.00</span>
 </div>
 
 <div class="disclaimer">
