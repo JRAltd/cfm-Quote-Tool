@@ -19,6 +19,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f5f7;color:va
 /* Header */
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
 .logo{height:56px}
+.storeAddress{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
 .brandTitle{font-family:Georgia,'Times New Roman',serif;font-size:44px;color:var(--navy);text-align:right;letter-spacing:.5px}
 .dateLine{text-align:right;font-size:13px;color:var(--muted);margin-top:6px;letter-spacing:.5px}
 .dateLine b{color:var(--text)}
@@ -257,7 +258,10 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 <body><div class="wrap"><div class="card">
 
 <div class="top">
-  <div><img src="logo-black.png" class="logo"></div>
+  <div>
+    <img src="logo-black.png" class="logo">
+    <div class="storeAddress">cfm Distributor's inc<br>4137 109th Street<br>Urbandale, Iowa 50322</div>
+  </div>
   <div>
     <div class="brandTitle">Proposal.</div>
     <div class="dateLine">DATE <b><span id="today"></span></b></div>
