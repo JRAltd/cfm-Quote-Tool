@@ -244,6 +244,7 @@ function resetQuote() {
     document.getElementById('contactEmail').value = '';
     document.getElementById('poJob').value = '';
     document.getElementById('quotedBy').value = '';
+    document.getElementById('quotedByEmail').value = '';
     document.getElementById('quotedByDisplay').innerText = '\u2014';
     document.getElementById('freight').value = '0';
     selectedCustomer = null;
@@ -337,6 +338,7 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 
 <div class="quotedBy noPrint">
   Quoted by: <input id="quotedBy" placeholder="Sales rep name" oninput="document.getElementById('quotedByDisplay').innerText = this.value || '\u2014'">
+  Email: <input id="quotedByEmail" type="email" placeholder="rep@email.com">
 </div>
 
 </div></div>
