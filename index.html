@@ -56,7 +56,7 @@ table.items td.right{text-align:right}
 table.items td[contenteditable]{outline:none}
 table.items input{width:100%;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px}
 table.items input.model-input{color:var(--muted)}
-select.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
+input.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
 
 /* Subtotal bar */
 .subtotal-bar{background:var(--navy);color:#fff;display:flex;justify-content:flex-end;align-items:center;gap:18px;padding:14px 20px;border-radius:4px;margin-top:4px}
@@ -89,7 +89,7 @@ button.small-delete{background:#b91c1c;padding:6px 12px;font-size:13px;margin:0}
   .noPrint{display:none !important}
   .dropdown{display:none !important}
   .meta-table input,.contact-row input,table.items input,.quotedBy input{border:none;padding:0;background:transparent}
-  select.avail{border:none;background:transparent;-webkit-appearance:none;appearance:none}
+  input.avail{border:none;background:transparent}
   @page{margin:.5in}
 }
 </style>
@@ -153,13 +153,7 @@ function addRow(){
   let tb=document.getElementById('tb');
   let r=tb.insertRow();
   r.innerHTML =
-    '<td><select class="avail">'+
-      '<option>In Stock</option>'+
-      '<option selected>2-3 Weeks</option>'+
-      '<option>4-6 Weeks</option>'+
-      '<option>6-8 Weeks</option>'+
-      '<option>Special Order</option>'+
-    '</select></td>'+
+    '<td><input type=text class="avail" placeholder="Lead time" value="2-3 Weeks"></td>'+
     '<td><input type=number value=1 min=0 onchange="calc()" style="max-width:70px"></td>'+
     '<td><input type=text class="model-input" placeholder="Model/Part #"></td>'+
     '<td><input type=text placeholder="Item description"></td>'+
@@ -183,12 +177,11 @@ function calc(){
 
 /* ---------- Quote number ---------- */
 function getQuoteNumber(advance = false) {
-    const yyyy = new Date().getFullYear();
-    let counter = localStorage.getItem('cfm_quote_counter_' + yyyy);
+    let counter = localStorage.getItem('cfm_quote_counter');
     if (!counter) { counter = 1; }
     else { counter = parseInt(counter); if (advance) counter++; }
-    localStorage.setItem('cfm_quote_counter_' + yyyy, counter);
-    return `QT-${yyyy}-${String(counter).padStart(4, '0')}`;
+    localStorage.setItem('cfm_quote_counter', counter);
+    return `QT-${String(counter).padStart(4, '0')}`;
 }
 
 function initDefaults(advanceNum = false) {
