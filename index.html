@@ -19,6 +19,8 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f5f7;color:va
 /* Header */
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
 .logo{height:56px}
+.storeAddress{font-size:12px;color:var(--text);margin-top:8px;line-height:1.5}
+.storeAddress .storeName{color:var(--navy);font-weight:bold}
 .brandTitle{font-family:Georgia,'Times New Roman',serif;font-size:44px;color:var(--navy);text-align:right;letter-spacing:.5px}
 .dateLine{text-align:right;font-size:13px;color:var(--muted);margin-top:6px;letter-spacing:.5px}
 .dateLine b{color:var(--text)}
@@ -34,7 +36,7 @@ hr.accent{border:none;border-top:4px solid var(--gold);margin:18px 0 20px}
 /* Customer search */
 .search-wrap{position:relative}
 #customerSearch{font-weight:bold}
-.dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray-line);border-top:none;border-radius:0 0 6px 6px;max-height:280px;overflow-y:auto;z-index:50;box-shadow:0 6px 14px rgba(0,0,0,.12);display:none}
+.dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray-line);border-top:none;border-radius:0 0 6px 6px;max-height:280px;overflow-y:auto;z-index:50;box-shadow:0 4px 6px rgba(0,0,0,.1);display:none}
 .dropdown.show{display:block}
 .dropdown-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f1f3;font-size:13px}
 .dropdown-item:hover,.dropdown-item.active{background:var(--gray-bg)}
@@ -53,15 +55,22 @@ table.items thead th{background:var(--gray-bg);text-align:left;padding:10px 12px
 table.items thead th.right{text-align:right}
 table.items td{padding:10px 12px;border-bottom:1px solid var(--gray-line);font-size:14px;vertical-align:top}
 table.items td.right{text-align:right}
-table.items td[contenteditable]{outline:none;border:1px solid var(--gray-line);border-radius:6px;padding:6px 8px;background:#fff}
-table.items td[contenteditable]:focus{border-color:var(--navy);box-shadow:0 0 0 2px rgba(18,41,77,.12)}
+table.items td[contenteditable]{outline:none}
 table.items input{width:100%;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px}
-select.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
+table.items input.model-input{color:var(--muted)}
+table.items .edit-box{width:100%;box-sizing:border-box;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px;word-wrap:break-word;white-space:pre-wrap;outline:none;min-height:40px}
+table.items .edit-box.model-input{color:var(--muted)}
+table.items .edit-box:empty:before{content:attr(data-placeholder);color:var(--muted);opacity:.65;white-space:nowrap}
+input.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
+
+/* Quote # box */
+.qn-box{border:1px solid var(--gray-line);border-radius:6px;padding:8px 12px;font-size:14px;font-weight:bold;background:#fff;color:var(--text)}
 
 /* Subtotal bar */
-.subtotal-bar{background:var(--navy);color:#fff;display:flex;justify-content:flex-end;align-items:center;gap:18px;padding:14px 20px;border-radius:4px;margin-top:4px}
+.subtotal-bar{background:var(--navy);color:#fff;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:18px;padding:14px 20px;border-radius:4px;margin-top:4px}
 .subtotal-bar .label{color:var(--gold);font-weight:bold;letter-spacing:1px;font-size:14px}
 .subtotal-bar .amount{font-size:22px;font-weight:bold}
+.freight-input{width:110px;border:1px solid var(--gray-line);border-radius:6px;padding:6px 8px;font-size:16px;font-weight:bold;background:#fff;color:var(--navy-dark);text-align:right}
 
 /* Disclaimer box */
 .disclaimer{background:#fdf6df;border:1px solid #f1e3ad;border-left:4px solid var(--gold);border-radius:4px;padding:14px 18px;margin-top:18px;font-size:13px}
@@ -70,7 +79,7 @@ select.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;fon
 .disclaimer .line2 b{color:var(--text);font-style:normal}
 
 /* Note box */
-.note-box{width:100%;padding:10px;border-radius:6px;border:1px dashed var(--gray-line);background:#fafafa;color:var(--text);margin-top:8px;box-sizing:border-box;min-height:44px;outline:none;font-size:14px}
+.note-box{width:100%;padding:10px;border-radius:6px;border:1px dashed var(--gray-line);background:#fafafa;color:var(--text);margin-top:8px;box-sizing:border-box;min-height:44px;outline:none;font-size:13px}
 
 /* Buttons */
 button{background:var(--navy);color:#fff;border:0;padding:11px 18px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:14px}
@@ -82,6 +91,26 @@ button.small-delete{background:#b91c1c;padding:6px 12px;font-size:13px;margin:0}
 .quotedBy{margin-top:6px;font-size:12px;color:var(--muted)}
 .quotedBy input{border:1px solid var(--gray-line);border-radius:6px;padding:5px 8px;font-size:12px;width:160px;margin-left:4px}
 
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+@media (max-width:640px){
+  .wrap{padding:12px}
+  .card{padding:16px}
+  .top{flex-direction:column;align-items:flex-start;gap:10px}
+  .brandTitle{font-size:30px;text-align:left}
+  .dateLine{text-align:left}
+  .meta-table thead{display:none}
+  .meta-table,.meta-table tbody,.meta-table tr,.meta-table td{display:block;width:100%}
+  .meta-table td{border-bottom:none;padding:8px 0}
+  .meta-table td:before{content:attr(data-label);display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+  .contact-row>div{min-width:100%}
+  table.items{min-width:640px}
+  .subtotal-bar{flex-direction:column;align-items:stretch;text-align:right}
+  .freight-input{width:100%}
+  .quotedBy{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+  .quotedBy input{width:100%;margin-left:0}
+}
+
 @media print{
   body{background:#fff}
   .wrap{padding:0;max-width:100%}
@@ -89,8 +118,11 @@ button.small-delete{background:#b91c1c;padding:6px 12px;font-size:13px;margin:0}
   .noPrint{display:none !important}
   .dropdown{display:none !important}
   .meta-table input,.contact-row input,table.items input,.quotedBy input{border:none;padding:0;background:transparent}
-  table.items td[contenteditable]{border:none;padding:6px 0;background:transparent;box-shadow:none}
-  select.avail{border:none;background:transparent;-webkit-appearance:none;appearance:none}
+  table.items .edit-box{border:none;padding:0;min-height:0}
+  table.items .edit-box:empty:before{content:none}
+  input.avail{border:none;background:transparent}
+  .qn-box{border:none;padding:0;background:transparent}
+  .freight-input{border:none;padding:0;background:transparent;color:#fff}
   @page{margin:.5in}
 }
 </style>
@@ -108,7 +140,7 @@ function renderDropdown(matches, query){
   }
   dd.innerHTML = matches.map((c,i)=>{
     const [name,contact,phone,,,,acct] = c;
-    const metaParts = [acct ? ('Acct# '+acct) : '', contact, phone].filter(Boolean).join(' \u00b7 ');
+    const metaParts = [acct ? ('Acct# '+acct) : '', contact, phone].filter(Boolean).join(' · ');
     return '<div class="dropdown-item" data-idx="'+i+'" onclick="selectCustomer('+i+')">'+
       '<div class="dname">'+escapeHtml(name)+'</div>'+
       (metaParts ? '<div class="dmeta">'+escapeHtml(metaParts)+'</div>' : '') +
@@ -154,16 +186,10 @@ function addRow(){
   let tb=document.getElementById('tb');
   let r=tb.insertRow();
   r.innerHTML =
-    '<td><select class="avail">'+
-      '<option>In Stock</option>'+
-      '<option selected>2-3 Weeks</option>'+
-      '<option>4-6 Weeks</option>'+
-      '<option>6-8 Weeks</option>'+
-      '<option>Special Order</option>'+
-    '</select></td>'+
+    '<td><input type=text class="avail" placeholder="Lead time"></td>'+
     '<td><input type=number value=1 min=0 onchange="calc()" style="max-width:70px"></td>'+
-    '<td contenteditable=true>Part #</td>'+
-    '<td contenteditable=true>Item description</td>'+
+    '<td><div class="edit-box model-input" contenteditable="true" data-placeholder="Model/Part #"></div></td>'+
+    '<td><div class="edit-box" contenteditable="true" data-placeholder="Description"></div></td>'+
     '<td><input type=number value=0 min=0 step=0.01 onchange="calc()"></td>'+
     '<td class=right>$0.00</td>'+
     '<td class=noPrint><button class="small-delete" onclick="deleteRow(this)">Delete</button></td>';
@@ -180,16 +206,18 @@ function calc(){
     t+=a;
   });
   document.getElementById('tot').innerText='$'+t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  let freight=+document.getElementById('freight').value||0;
+  let grand=t+freight;
+  document.getElementById('grandTot').innerText='$'+grand.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
 }
 
 /* ---------- Quote number ---------- */
 function getQuoteNumber(advance = false) {
-    const yyyy = new Date().getFullYear();
-    let counter = localStorage.getItem('cfm_quote_counter_' + yyyy);
+    let counter = localStorage.getItem('cfm_quote_counter');
     if (!counter) { counter = 1; }
     else { counter = parseInt(counter); if (advance) counter++; }
-    localStorage.setItem('cfm_quote_counter_' + yyyy, counter);
-    return `QT-${yyyy}-${String(counter).padStart(4, '0')}`;
+    localStorage.setItem('cfm_quote_counter', counter);
+    return `QT-${String(counter).padStart(4, '0')}`;
 }
 
 function initDefaults(advanceNum = false) {
@@ -226,6 +254,9 @@ function addNote() {
     noteDiv.contentEditable = true;
     noteDiv.className = 'note-box';
     noteDiv.innerHTML = 'Enter note here...';
+    noteDiv.addEventListener('focus', () => {
+      if(noteDiv.innerText === 'Enter note here...'){ noteDiv.innerText = ''; }
+    }, { once: true });
     container.appendChild(noteDiv);
 }
 
@@ -240,7 +271,9 @@ function resetQuote() {
     document.getElementById('contactEmail').value = '';
     document.getElementById('poJob').value = '';
     document.getElementById('quotedBy').value = '';
-    document.getElementById('quotedByDisplay').innerText = '\u2014';
+    document.getElementById('quotedByEmail').value = '';
+    document.getElementById('quotedByDisplay').innerText = '—';
+    document.getElementById('freight').value = '0';
     selectedCustomer = null;
     initDefaults(true);
     addRow();
@@ -251,7 +284,10 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 <body><div class="wrap"><div class="card">
 
 <div class="top">
-  <div><img src="logo-black.png" class="logo"></div>
+  <div>
+    <img src="logo-black.png" class="logo">
+    <div class="storeAddress"><span class="storeName">cfm Distributor's inc</span><br>4137 109th Street<br>Urbandale, Iowa 50322</div>
+  </div>
   <div>
     <div class="brandTitle">Proposal.</div>
     <div class="dateLine">DATE <b><span id="today"></span></b></div>
@@ -271,16 +307,16 @@ window.onload=()=>{ initDefaults(false); addRow(); };
   </thead>
   <tbody>
     <tr>
-      <td>
+      <td data-label="Customer">
         <div class="search-wrap" id="customerSearchWrap">
           <input id="customerSearch" placeholder="Search customer name..." autocomplete="off" oninput="onCustomerSearchInput()">
           <div class="dropdown" id="customerDropdown"></div>
         </div>
       </td>
-      <td><input type="date" id="quoteDate"></td>
-      <td><input type="date" id="expDate"></td>
-      <td><input id="poJob" placeholder="PO# / Job name"></td>
-      <td><strong id="quoteNum"></strong></td>
+      <td data-label="Quote Date"><input type="date" id="quoteDate"></td>
+      <td data-label="Expiration Date"><input type="date" id="expDate"></td>
+      <td data-label="PO# / Job"><input id="poJob" placeholder="PO# / Job name"></td>
+      <td data-label="Quote #"><div class="qn-box" id="quoteNum"></div></td>
     </tr>
   </tbody>
 </table>
@@ -292,12 +328,13 @@ window.onload=()=>{ initDefaults(false); addRow(); };
   <div><label>Email</label><input id="contactEmail" type="email" placeholder="Enter manually"></div>
 </div>
 
+<div class="table-scroll">
 <table class="items">
   <thead>
     <tr>
-      <th style="width:14%">Availability</th>
-      <th style="width:8%">Qty</th>
-      <th style="width:14%">Part #</th>
+      <th style="width:13%">Availability</th>
+      <th style="width:7%">Qty</th>
+      <th style="width:14%">Model/Part #</th>
       <th>Item Name/Description</th>
       <th class="right" style="width:12%">Price</th>
       <th class="right" style="width:12%">Extended</th>
@@ -306,6 +343,7 @@ window.onload=()=>{ initDefaults(false); addRow(); };
   </thead>
   <tbody id="tb"></tbody>
 </table>
+</div>
 
 <div id="notesArea"></div>
 
@@ -319,15 +357,20 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 <div class="subtotal-bar">
   <span class="label">SUBTOTAL</span>
   <span class="amount" id="tot">$0.00</span>
+  <span class="label">FREIGHT $</span>
+  <input type="number" id="freight" class="freight-input" value="0" min="0" step="0.01" onchange="calc()">
+  <span class="label">TOTAL</span>
+  <span class="amount" id="grandTot">$0.00</span>
 </div>
 
 <div class="disclaimer">
   <div class="line1">Pricing excludes applicable taxes and shipping costs unless otherwise noted.</div>
-  <div class="line2">Prices subject to change without notice. Quoted by <b><span id="quotedByDisplay">\u2014</span></b>. Ref: <span id="quoteNumRef"></span></div>
+  <div class="line2">Prices subject to change without notice. Quoted by <b><span id="quotedByDisplay">—</span></b>. Ref: <span id="quoteNumRef"></span></div>
 </div>
 
 <div class="quotedBy noPrint">
-  Quoted by: <input id="quotedBy" placeholder="Sales rep name" oninput="document.getElementById('quotedByDisplay').innerText = this.value || '\u2014'">
+  Quoted by: <input id="quotedBy" placeholder="Sales rep name" oninput="document.getElementById('quotedByDisplay').innerText = this.value || '—'">
+  Email: <input id="quotedByEmail" type="email" placeholder="rep@email.com">
 </div>
 
 </div></div>
