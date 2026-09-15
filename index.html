@@ -36,7 +36,7 @@ hr.accent{border:none;border-top:4px solid var(--gold);margin:18px 0 20px}
 /* Customer search */
 .search-wrap{position:relative}
 #customerSearch{font-weight:bold}
-.dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray-line);border-top:none;border-radius:0 0 6px 6px;max-height:280px;overflow-y:auto;z-index:50;box-shadow:0 6px 14px rgba(0,0,0,.12);display:none}
+.dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--gray-line);border-top:none;border-radius:0 0 6px 6px;max-height:280px;overflow-y:auto;z-index:50;box-shadow:0 4px 6px rgba(0,0,0,.1);display:none}
 .dropdown.show{display:block}
 .dropdown-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f1f3;font-size:13px}
 .dropdown-item:hover,.dropdown-item.active{background:var(--gray-bg)}
@@ -58,6 +58,9 @@ table.items td.right{text-align:right}
 table.items td[contenteditable]{outline:none}
 table.items input{width:100%;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px}
 table.items input.model-input{color:var(--muted)}
+table.items .edit-box{width:100%;box-sizing:border-box;border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:14px;word-wrap:break-word;white-space:pre-wrap;outline:none;min-height:40px}
+table.items .edit-box.model-input{color:var(--muted)}
+table.items .edit-box:empty:before{content:attr(data-placeholder);color:var(--muted);opacity:.65;white-space:nowrap}
 input.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font-size:13px;width:100%;color:var(--navy);font-weight:bold}
 
 /* Quote # box */
@@ -76,7 +79,7 @@ input.avail{border:1px solid var(--gray-line);border-radius:6px;padding:6px;font
 .disclaimer .line2 b{color:var(--text);font-style:normal}
 
 /* Note box */
-.note-box{width:100%;padding:10px;border-radius:6px;border:1px dashed var(--gray-line);background:#fafafa;color:var(--text);margin-top:8px;box-sizing:border-box;min-height:44px;outline:none;font-size:14px}
+.note-box{width:100%;padding:10px;border-radius:6px;border:1px dashed var(--gray-line);background:#fafafa;color:var(--text);margin-top:8px;box-sizing:border-box;min-height:44px;outline:none;font-size:13px}
 
 /* Buttons */
 button{background:var(--navy);color:#fff;border:0;padding:11px 18px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:14px}
@@ -115,6 +118,8 @@ button.small-delete{background:#b91c1c;padding:6px 12px;font-size:13px;margin:0}
   .noPrint{display:none !important}
   .dropdown{display:none !important}
   .meta-table input,.contact-row input,table.items input,.quotedBy input{border:none;padding:0;background:transparent}
+  table.items .edit-box{border:none;padding:0;min-height:0}
+  table.items .edit-box:empty:before{content:none}
   input.avail{border:none;background:transparent}
   .qn-box{border:none;padding:0;background:transparent}
   .freight-input{border:none;padding:0;background:transparent;color:#fff}
@@ -135,7 +140,7 @@ function renderDropdown(matches, query){
   }
   dd.innerHTML = matches.map((c,i)=>{
     const [name,contact,phone,,,,acct] = c;
-    const metaParts = [acct ? ('Acct# '+acct) : '', contact, phone].filter(Boolean).join(' \u00b7 ');
+    const metaParts = [acct ? ('Acct# '+acct) : '', contact, phone].filter(Boolean).join(' · ');
     return '<div class="dropdown-item" data-idx="'+i+'" onclick="selectCustomer('+i+')">'+
       '<div class="dname">'+escapeHtml(name)+'</div>'+
       (metaParts ? '<div class="dmeta">'+escapeHtml(metaParts)+'</div>' : '') +
@@ -183,8 +188,8 @@ function addRow(){
   r.innerHTML =
     '<td><input type=text class="avail" placeholder="Lead time"></td>'+
     '<td><input type=number value=1 min=0 onchange="calc()" style="max-width:70px"></td>'+
-    '<td><input type=text class="model-input" placeholder="Model/Part #"></td>'+
-    '<td><input type=text placeholder="Item description"></td>'+
+    '<td><div class="edit-box model-input" contenteditable="true" data-placeholder="Model/Part #"></div></td>'+
+    '<td><div class="edit-box" contenteditable="true" data-placeholder="Description"></div></td>'+
     '<td><input type=number value=0 min=0 step=0.01 onchange="calc()"></td>'+
     '<td class=right>$0.00</td>'+
     '<td class=noPrint><button class="small-delete" onclick="deleteRow(this)">Delete</button></td>';
@@ -267,7 +272,7 @@ function resetQuote() {
     document.getElementById('poJob').value = '';
     document.getElementById('quotedBy').value = '';
     document.getElementById('quotedByEmail').value = '';
-    document.getElementById('quotedByDisplay').innerText = '\u2014';
+    document.getElementById('quotedByDisplay').innerText = '—';
     document.getElementById('freight').value = '0';
     selectedCustomer = null;
     initDefaults(true);
@@ -360,11 +365,11 @@ window.onload=()=>{ initDefaults(false); addRow(); };
 
 <div class="disclaimer">
   <div class="line1">Pricing excludes applicable taxes and shipping costs unless otherwise noted.</div>
-  <div class="line2">Prices subject to change without notice. Quoted by <b><span id="quotedByDisplay">\u2014</span></b>. Ref: <span id="quoteNumRef"></span></div>
+  <div class="line2">Prices subject to change without notice. Quoted by <b><span id="quotedByDisplay">—</span></b>. Ref: <span id="quoteNumRef"></span></div>
 </div>
 
 <div class="quotedBy noPrint">
-  Quoted by: <input id="quotedBy" placeholder="Sales rep name" oninput="document.getElementById('quotedByDisplay').innerText = this.value || '\u2014'">
+  Quoted by: <input id="quotedBy" placeholder="Sales rep name" oninput="document.getElementById('quotedByDisplay').innerText = this.value || '—'">
   Email: <input id="quotedByEmail" type="email" placeholder="rep@email.com">
 </div>
 
