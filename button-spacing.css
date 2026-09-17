@@ -17,7 +17,7 @@
   margin: 0;
 }
 
-/* Totals bar tuned to match the reference layout. */
+/* Totals bar */
 .subtotal-bar {
   min-height: 62px;
   padding: 12px 18px;
@@ -43,6 +43,7 @@
   text-align: center;
 }
 
+/* Tablet */
 @media (max-width: 900px) {
   .noPrint.action-buttons {
     gap: 9px;
@@ -59,6 +60,7 @@
   }
 }
 
+/* Mobile */
 @media (max-width: 640px) {
   .noPrint.action-buttons {
     gap: 8px;
