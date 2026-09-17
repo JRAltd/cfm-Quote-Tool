@@ -1,0 +1,21 @@
+/* Consistent spacing for the quote action buttons. */
+.noPrint.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.noPrint.action-buttons button {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .noPrint.action-buttons {
+    gap: 8px;
+  }
+
+  .noPrint.action-buttons button {
+    flex: 1 1 auto;
+  }
+}
