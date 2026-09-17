@@ -4,515 +4,642 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>cfm Quote Tool</title>
-  <link rel="stylesheet" href="button-spacing.css">
   <style>
-    :root {
-      --navy: #12294d;
-      --dark: #0d1f3a;
-      --gold: #f2b705;
-      --bg: #eef0f2;
-      --line: #d7dbe0;
-      --muted: #6b7280;
+    :root{
+      --navy:#12294d;
+      --dark:#0d1f3a;
+      --gold:#f2b705;
+      --bg:#eef0f2;
+      --line:#d7dbe0;
+      --muted:#6b7280;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,Helvetica,sans-serif;
+      background:#f4f5f7;
+      color:#1a1a1a
+    }
+    .wrap{
+      max-width:1100px;
+      margin:auto;
+      padding:24px
+    }
+    .card{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:6px;
+      padding:32px;
+      box-shadow:0 1px 3px #0001
+    }
+    .top{
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      flex-wrap:wrap
+    }
+    .logo{
+      height:56px
+    }
+    .storeAddress{
+      font-size:12px;
+      margin-top:8px;
+      line-height:1.5
+    }
+    .storeName{
+      color:var(--navy);
+      font-weight:bold
+    }
+    .brandTitle{
+      font:44px Georgia,serif;
+      color:var(--navy);
+      text-align:right
+    }
+    .dateLine{
+      text-align:right;
+      font-size:13px;
+      color:var(--muted);
+      margin-top:6px
+    }
+    hr.accent{
+      border:0;
+      border-top:4px solid var(--gold);
+      margin:18px 0 20px
+    }
+    .meta-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-bottom:24px;
+      font-size:14px
+    }
+    .meta-table th{
+      background:var(--bg);
+      text-align:left;
+      padding:10px 12px;
+      font-size:12px;
+      border-bottom:1px solid var(--line)
+    }
+    .meta-table td{
+      padding:10px 12px;
+      border-bottom:1px solid var(--line)
+    }
+    input{
+      border:1px solid var(--line);
+      border-radius:6px;
+      padding:8px;
+      font-size:14px;
+      background:#fff;
+      color:#1a1a1a
+    }
+    .meta-table input,.contact-row input{
+      width:100%
+    }
+    .search-wrap{
+      position:relative
+    }
+    #customerSearch{
+      font-weight:bold
+    }
+    .dropdown{
+      display:none;
+      position:absolute;
+      top:100%;
+      left:0;
+      right:0;
+      background:#fff;
+      border:1px solid var(--line);
+      z-index:50;
+      max-height:280px;
+      overflow:auto
+    }
+    .dropdown.show{
+      display:block
+    }
+    .dropdown-item{
+      padding:8px 12px;
+      cursor:pointer;
+      border-bottom:1px solid #eee;
+      font-size:13px
+    }
+    .dropdown-item:hover{
+      background:var(--bg)
+    }
+    .dname{
+      font-weight:bold;
+      color:var(--navy)
+    }
+    .dmeta{
+      color:var(--muted);
+      font-size:12px
+    }
+    .dropdown-empty{
+      padding:10px;
+      color:var(--muted)
+    }
+    .contact-row{
+      display:flex;
+      gap:16px;
+      flex-wrap:wrap;
+      margin-top:10px
+    }
+    .contact-row>div{
+      flex:1;
+      min-width:180px
+    }
+    .contact-row label{
+      display:block;
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:4px;
+      text-transform:uppercase
+    }
+    .table-scroll{
+      overflow-x:auto
+    }
+    table.items{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:6px;
+      min-width:900px
+    }
+    table.items th{
+      background:var(--bg);
+      text-align:left;
+      padding:10px 8px;
+      font-size:13px;
+      border-bottom:2px solid var(--line)
+    }
+    table.items td{
+      padding:10px 8px;
+      border-bottom:1px solid var(--line);
+      font-size:14px;
+      vertical-align:top
+    }
+    table.items .right{
+      text-align:right
+    }
+    table.items input{
+      width:100%;
+      padding:6px
+    }
+    .edit-box{
+      border:1px solid var(--line);
+      border-radius:6px;
+      padding:6px;
+      min-height:31px;
+      outline:0;
+      white-space:pre-wrap
+    }
+    .edit-box:empty:before{
+      content:attr(data-placeholder);
+      color:var(--muted);
+      opacity:.65
+    }
+    .avail{
+      color:var(--navy);
+      font-weight:bold
+    }
+    .qn-box{
+      border:1px solid var(--line);
+      border-radius:6px;
+      padding:8px 12px;
+      font-weight:bold
+    }
+    .line-note td{
+      background:#fafafa
+    }
+    .note-text{
+      font-style:italic;
+      color:var(--muted)
+    }
+    .project-subtotal td{
+      background:#fdf6df;
+      border-top:2px solid var(--gold);
+      font-weight:bold;
+      color:var(--navy)
+    }
+    .project-subtotal input{
+      font-weight:bold
+    }
+    .section-amount{
+      font-size:16px
+    }
+    .row-actions{
+      white-space:nowrap;
+      text-align:center
+    }
+    .move-button{
+      background:#64748b;
+      color:#fff;
+      border:0;
+      border-radius:3px;
+      padding:3px 5px;
+      margin:0 1px;
+      font-size:11px;
+      line-height:1;
+      cursor:pointer
+    }
+    .move-button:hover{
+      background:var(--dark)
+    }
+    .small-delete{
+      background:#b91c1c;
+      color:#fff;
+      border:0;
+      border-radius:3px;
+      padding:4px 6px;
+      font-size:11px;
+      cursor:pointer
     }
 
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f5f7;
-      color: #1a1a1a;
+    .noPrint.action-buttons{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      width:100%;
+      margin-top:16px;
+      margin-bottom:24px !important;
+      justify-content:space-between
     }
-    .wrap {
-      max-width: 1100px;
-      margin: auto;
-      padding: 24px;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 32px;
-      box-shadow: 0 1px 3px #0001;
-    }
-    .top {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .logo { height: 56px; }
-    .storeAddress {
-      font-size: 12px;
-      margin-top: 8px;
-      line-height: 1.5;
-    }
-    .storeName { color: var(--navy); font-weight: bold; }
-    .brandTitle {
-      font: 44px Georgia, serif;
-      color: var(--navy);
-      text-align: right;
-    }
-    .dateLine {
-      text-align: right;
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 6px;
-    }
-    hr.accent {
-      border: 0;
-      border-top: 4px solid var(--gold);
-      margin: 18px 0 20px;
-    }
-    .meta-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 24px;
-      font-size: 14px;
-    }
-    .meta-table th {
-      background: var(--bg);
-      text-align: left;
-      padding: 10px 12px;
-      font-size: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-    .meta-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-    }
-    input {
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 14px;
-      background: #fff;
-      color: #1a1a1a;
-    }
-    .meta-table input, .contact-row input { width: 100%; }
-    .search-wrap { position: relative; }
-    #customerSearch { font-weight: bold; }
-    .dropdown {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border: 1px solid var(--line);
-      z-index: 50;
-      max-height: 280px;
-      overflow: auto;
-    }
-    .dropdown.show { display: block; }
-    .dropdown-item {
-      padding: 8px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      font-size: 13px;
-    }
-    .dropdown-item:hover { background: var(--bg); }
-    .dname { font-weight: bold; color: var(--navy); }
-    .dmeta { color: var(--muted); font-size: 12px; }
-    .dropdown-empty { padding: 10px; color: var(--muted); }
-    .contact-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-    .contact-row > div { flex: 1; min-width: 180px; }
-    .contact-row label {
-      display: block;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-    .table-scroll { overflow-x: auto; }
-    table.items {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 6px;
-      min-width: 900px;
-    }
-    table.items th {
-      background: var(--bg);
-      text-align: left;
-      padding: 10px 8px;
-      font-size: 13px;
-      border-bottom: 2px solid var(--line);
-    }
-    table.items td {
-      padding: 10px 8px;
-      border-bottom: 1px solid var(--line);
-      font-size: 14px;
-      vertical-align: top;
-    }
-    table.items .right { text-align: right; }
-    table.items input { width: 100%; padding: 6px; }
-    .edit-box {
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 6px;
-      min-height: 31px;
-      outline: 0;
-      white-space: pre-wrap;
-    }
-    .edit-box:empty:before {
-      content: attr(data-placeholder);
-      color: var(--muted);
-      opacity: .65;
-    }
-    .avail { color: var(--navy); font-weight: bold; }
-    .qn-box {
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-weight: bold;
-    }
-    .line-note td { background: #fafafa; }
-    .note-text { font-style: italic; color: var(--muted); }
-    .project-subtotal td {
-      background: #fdf6df;
-      border-top: 2px solid var(--gold);
-      font-weight: bold;
-      color: var(--navy);
-    }
-    .project-subtotal input { font-weight: bold; }
-    .section-amount { font-size: 16px; }
-    .row-actions {
-      white-space: nowrap;
-      text-align: center;
-    }
-    .move-button {
-      background: #64748b;
-      color: #fff;
-      border: 0;
-      border-radius: 3px;
-      padding: 3px 5px;
-      margin: 0 1px;
-      font-size: 11px;
-      line-height: 1;
-      cursor: pointer;
-    }
-    .move-button:hover { background: var(--dark); }
-    .small-delete {
-      background: #b91c1c;
-      color: #fff;
-      border: 0;
-      border-radius: 3px;
-      padding: 4px 6px;
-      font-size: 11px;
-      cursor: pointer;
-    }
-    .subtotal-bar {
-      background: var(--navy);
-      color: #fff;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 18px;
-      padding: 14px 20px;
-      border-radius: 4px;
-    }
-    .label {
-      color: var(--gold);
-      font-weight: bold;
-      font-size: 14px;
-    }
-    .amount {
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .freight-input {
-      width: 110px;
-      text-align: right;
-      font-weight: bold;
-      color: var(--dark);
-    }
-    .disclaimer {
-      background: #fdf6df;
-      border: 1px solid #f1e3ad;
-      border-left: 4px solid var(--gold);
-      padding: 14px 18px;
-      margin-top: 18px;
-      font-size: 13px;
-    }
-    .line1 { font-weight: bold; }
-    .line2 {
-      color: var(--muted);
-      margin-top: 4px;
-      font-style: italic;
-    }
-    .note-box {
-      width: 100%;
-      padding: 10px;
-      border: 1px dashed var(--line);
-      background: #fafafa;
-      margin-top: 8px;
-      min-height: 44px;
-      outline: 0;
-    }
-    button {
-      background: var(--navy);
-      color: #fff;
-      border: 0;
-      padding: 11px 18px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    button:hover { background: var(--dark); }
-    button.gold { background: var(--gold); color: var(--dark); }
-    button.danger { background: #b91c1c; }
-    .quotedBy {
-      margin-top: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .quotedBy input {
-      width: 160px;
-      margin-left: 4px;
-      padding: 5px 8px;
-      font-size: 12px;
+    .noPrint.action-buttons button{
+      margin:0;
+      flex:1 1 0;
+      min-width:120px
     }
 
-    @media (max-width: 640px) {
-      .wrap { padding: 12px; }
-      .card { padding: 16px; }
-      .top { flex-direction: column; }
-      .brandTitle, .dateLine { text-align: left; }
-      .brandTitle { font-size: 30px; }
-      .meta-table thead { display: none; }
-      .meta-table, .meta-table tbody, .meta-table tr, .meta-table td {
-        display: block;
-        width: 100%;
-      }
-      .meta-table td {
-        border: 0;
-        padding: 8px 0;
-      }
-      .meta-table td:before {
-        content: attr(data-label);
-        display: block;
-        font-size: 11px;
-        color: var(--muted);
-        text-transform: uppercase;
-        margin-bottom: 4px;
-      }
-      .contact-row > div { min-width: 100%; }
-      .subtotal-bar {
-        flex-direction: column;
-        align-items: stretch;
-        text-align: right;
-      }
-      .freight-input { width: 100%; }
+    .subtotal-bar{
+      background:var(--navy);
+      color:#fff;
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+      gap:18px;
+      padding:14px 20px;
+      border-radius:4px
+    }
+    .label{
+      color:var(--gold);
+      font-weight:bold;
+      font-size:14px
+    }
+    .amount{
+      font-size:22px;
+      font-weight:bold
+    }
+    .freight-input{
+      width:110px;
+      text-align:right;
+      font-weight:bold;
+      color:var(--dark)
+    }
+    .disclaimer{
+      background:#fdf6df;
+      border:1px solid #f1e3ad;
+      border-left:4px solid var(--gold);
+      padding:14px 18px;
+      margin-top:18px;
+      font-size:13px
+    }
+    .line1{
+      font-weight:bold
+    }
+    .line2{
+      color:var(--muted);
+      margin-top:4px;
+      font-style:italic
+    }
+    .note-box{
+      width:100%;
+      padding:10px;
+      border:1px dashed var(--line);
+      background:#fafafa;
+      margin-top:8px;
+      min-height:44px;
+      outline:0
+    }
+    button{
+      background:var(--navy);
+      color:#fff;
+      border:0;
+      padding:11px 18px;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:bold
+    }
+    button:hover{
+      background:var(--dark)
+    }
+    button.gold{
+      background:var(--gold);
+      color:var(--dark)
+    }
+    button.danger{
+      background:#b91c1c
+    }
+    .quotedBy{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--muted)
+    }
+    .quotedBy input{
+      width:160px;
+      margin-left:4px;
+      padding:5px 8px;
+      font-size:12px
     }
 
-    @media print {
-      body { background: #fff; }
-      .wrap { padding: 0; max-width: 100%; }
-      .card { border: 0; box-shadow: none; padding: 0; }
-      .noPrint, .internal { display: none !important; }
-      .dropdown { display: none !important; }
-      .meta-table input, .contact-row input, table.items input {
-        border: 0;
-        padding: 0;
-        background: transparent;
+    @media (max-width:640px){
+      .wrap{
+        padding:12px
       }
-      .edit-box { border: 0; padding: 0; min-height: 0; }
-      .edit-box:empty:before { content: none; }
-      .qn-box { border: 0; padding: 0; }
-      .freight-input {
-        border: 0;
-        padding: 0;
-        background: transparent;
-        color: #fff;
+      .card{
+        padding:16px
       }
-      .project-subtotal input { border: 0; padding: 0; background: transparent; }
-      @page { margin: .5in; }
+      .top{
+        flex-direction:column
+      }
+      .brandTitle,.dateLine{
+        text-align:left
+      }
+      .brandTitle{
+        font-size:30px
+      }
+      .meta-table thead{
+        display:none
+      }
+      .meta-table,.meta-table tbody,.meta-table tr,.meta-table td{
+        display:block;
+        width:100%
+      }
+      .meta-table td{
+        border:0;
+        padding:8px 0
+      }
+      .meta-table td:before{
+        content:attr(data-label);
+        display:block;
+        font-size:11px;
+        color:var(--muted);
+        text-transform:uppercase;
+        margin-bottom:4px
+      }
+      .contact-row>div{
+        min-width:100%
+      }
+
+      .noPrint.action-buttons{
+        gap:8px;
+        margin-top:12px;
+        margin-bottom:16px !important
+      }
+      .noPrint.action-buttons button{
+        flex:1 1 calc(50% - 8px)
+      }
+
+      .subtotal-bar{
+        flex-direction:column;
+        align-items:stretch;
+        text-align:right
+      }
+      .freight-input{
+        width:100%
+      }
+    }
+
+    @media print{
+      body{
+        background:#fff
+      }
+      .wrap{
+        padding:0;
+        max-width:100%
+      }
+      .card{
+        border:0;
+        box-shadow:none;
+        padding:0
+      }
+      .noPrint,.internal{
+        display:none!important
+      }
+      .dropdown{
+        display:none!important
+      }
+      .meta-table input,.contact-row input,table.items input{
+        border:0;
+        padding:0;
+        background:transparent
+      }
+      .edit-box{
+        border:0;
+        padding:0;
+        min-height:0
+      }
+      .edit-box:empty:before{
+        content:none
+      }
+      .qn-box{
+        border:0;
+        padding:0
+      }
+      .freight-input{
+        border:0;
+        padding:0;
+        background:transparent;
+        color:#fff
+      }
+      .project-subtotal input{
+        border:0;
+        padding:0;
+        background:transparent
+      }
+      @page{
+        margin:.5in
+      }
     }
   </style>
   <script src="customers.js"></script>
   <script>
-    let selectedCustomer = null;
+    let selectedCustomer=null;
 
-    function esc(s) {
-      return (s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    function esc(s){
+      return (s||'').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
     }
 
-    function renderDropdown(ms, q) {
-      const d = document.getElementById('customerDropdown');
-      d.innerHTML = ms.length ? ms.map((c, i) => {
-        const [n, co, ph, , , , a] = c;
-        const m = [a ? 'Acct# ' + a : '', co, ph].filter(Boolean).join(' · ');
-        return '<div class="dropdown-item" onclick="selectCustomer(' + i + ')"><div class="dname">' + esc(n) + '</div><div class="dmeta">' + esc(m) + '</div></div>';
-      }).join('') : '<div class="dropdown-empty">No customers found for "' + esc(q) + '"</div>';
+    function renderDropdown(ms,q){
+      const d=document.getElementById('customerDropdown');
+      d.innerHTML = ms.length ? ms.map((c,i)=>{
+        const [n,co,ph,,,,a]=c;
+        const m=[a ? 'Acct# '+a : '', co, ph].filter(Boolean).join(' · ');
+        return '<div class="dropdown-item" onclick="selectCustomer('+i+')"><div class="dname">'+esc(n)+'</div><div class="dmeta">'+esc(m)+'</div></div>';
+      }).join('') : '<div class="dropdown-empty">No customers found for "'+esc(q)+'"</div>';
       d.classList.add('show');
       d._matches = ms;
     }
 
-    function onCustomerSearchInput() {
-      const q = customerSearch.value.trim().toLowerCase();
-      selectedCustomer = null;
-      if (q.length < 2) return customerDropdown.classList.remove('show');
-      renderDropdown(CUSTOMERS.filter(c => c[0].toLowerCase().includes(q)).slice(0, 20), q);
+    function onCustomerSearchInput(){
+      const q=customerSearch.value.trim().toLowerCase();
+      selectedCustomer=null;
+      if(q.length<2) return customerDropdown.classList.remove('show');
+      renderDropdown(CUSTOMERS.filter(c=>c[0].toLowerCase().includes(q)).slice(0,20),q);
     }
 
-    function selectCustomer(i) {
-      const c = customerDropdown._matches[i];
-      if (!c) return;
-      selectedCustomer = c;
-      const [n, co, ph, , , , a] = c;
-      customerSearch.value = n;
-      contactName.value = co || '';
-      contactPhone.value = ph || '';
-      acctNumber.value = a || '';
+    function selectCustomer(i){
+      const c=customerDropdown._matches[i];
+      if(!c) return;
+      selectedCustomer=c;
+      const [n,co,ph,,,,a]=c;
+      customerSearch.value=n;
+      contactName.value=co||'';
+      contactPhone.value=ph||'';
+      acctNumber.value=a||'';
       customerDropdown.classList.remove('show');
     }
 
-    document.addEventListener('click', e => {
-      if (!customerSearchWrap.contains(e.target)) customerDropdown.classList.remove('show');
+    document.addEventListener('click',e=>{
+      if(!customerSearchWrap.contains(e.target)) customerDropdown.classList.remove('show');
     });
 
-    function actions() {
+    function actions(){
       return '<td class="noPrint row-actions"><button type="button" class="move-button" onclick="moveRow(this,-1)" title="Move up" aria-label="Move up">▲</button><button type="button" class="move-button" onclick="moveRow(this,1)" title="Move down" aria-label="Move down">▼</button><button type="button" class="small-delete" onclick="deleteRow(this)">×</button></td>';
     }
 
-    function moveRow(b, d) {
-      const r = b.closest('tr'),
-            t = r.parentElement,
-            a = [...t.children],
-            i = a.indexOf(r),
-            j = i + d;
-      if (j < 0 || j >= a.length) return;
-      const x = a[j];
-      d < 0 ? t.insertBefore(r, x) : t.insertBefore(x, r);
-      calc();
+    function moveRow(b,d){
+      const r=b.closest('tr'),
+            t=r.parentElement,
+            a=[...t.children],
+            i=a.indexOf(r),
+            j=i+d;
+      if(j<0||j>=a.length) return;
+      const x=a[j];
+      d<0 ? t.insertBefore(r,x) : t.insertBefore(x,r);
+      calc()
     }
 
-    function deleteRow(b) {
+    function deleteRow(b){
       b.closest('tr').remove();
-      calc();
+      calc()
     }
 
-    function addRow() {
-      const r = tb.insertRow();
-      r.className = 'item-row';
-      r.innerHTML = '<td><input class="avail" placeholder="Lead time"></td><td><input type="number" value="1" min="0" onchange="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Description"></div></td><td class="internal"><input type="number" value="0" min="0" step=".01" onchange="calc()"></td><td class="internal"><input type="number" value="0" min="0" max="99.99" step=".01" onchange="calc()"></td><td class="right">$0.00</td>' + actions();
-      calc();
+    function addRow(){
+      const r=tb.insertRow();
+      r.className='item-row';
+      r.innerHTML='<td><input class="avail" placeholder="Lead time"></td><td><input type="number" value="1" min="0" onchange="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Description"></div></td><td class="internal"><input type="number" value="0" min="0" step=".01" onchange="calc()"></td><td class="internal"><input type="number" value="0" min="0" max="99.99" step=".01" onchange="calc()"></td><td class="right">$0.00</td>'+actions();
+      calc()
     }
 
-    function addLineNote() {
-      const r = tb.insertRow();
-      r.className = 'line-note';
-      r.innerHTML = '<td colspan="7"><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td>' + actions();
+    function addLineNote(){
+      const r=tb.insertRow();
+      r.className='line-note';
+      r.innerHTML='<td colspan="7"><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td>'+actions()
     }
 
-    function addProjectSubtotal() {
-      const r = tb.insertRow();
-      r.className = 'project-subtotal';
-      r.innerHTML = '<td colspan="6"><input placeholder="Project / section name"></td><td class="right section-amount">$0.00</td>' + actions();
-      calc();
+    function addProjectSubtotal(){
+      const r=tb.insertRow();
+      r.className='project-subtotal';
+      r.innerHTML='<td colspan="6"><input placeholder="Project / section name"></td><td class="right section-amount">$0.00</td>'+actions();
+      calc()
     }
 
-    function money(n) {
-      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    function money(n){
+      return '$'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')
     }
 
-    function calc() {
-      let total = 0, section = 0;
-      [...tb.rows].forEach(r => {
-        if (r.classList.contains('item-row')) {
-          const q = +r.cells[1].children[0].value || 0;
-          const c = +r.cells[4].children[0].value || 0;
-          const m = +r.cells[5].children[0].value || 0;
-          const p = m >= 100 ? 0 : c / (1 - m / 100);
-          const x = q * p;
-          r.cells[6].innerText = money(x);
-          total += x;
-          section += x;
-        } else if (r.classList.contains('project-subtotal')) {
-          r.querySelector('.section-amount').innerText = money(section);
-          section = 0;
+    function calc(){
+      let total=0,section=0;
+      [...tb.rows].forEach(r=>{
+        if(r.classList.contains('item-row')){
+          const q=+r.cells[1].children[0].value||0,
+                c=+r.cells[4].children[0].value||0,
+                m=+r.cells[5].children[0].value||0,
+                p=m>=100?0:c/(1-m/100),
+                x=q*p;
+          r.cells[6].innerText=money(x);
+          total+=x;
+          section+=x;
+        } else if(r.classList.contains('project-subtotal')){
+          r.querySelector('.section-amount').innerText=money(section);
+          section=0;
         }
       });
-      tot.innerText = money(total);
-      grandTot.innerText = money(total + (+freight.value || 0));
+      tot.innerText=money(total);
+      grandTot.innerText=money(total+(+freight.value||0))
     }
 
-    function quote(advance = false) {
-      let n = parseInt(localStorage.getItem('cfm_quote_counter') || '1', 10) + (advance ? 1 : 0);
-      localStorage.setItem('cfm_quote_counter', n);
-      return 'QT-' + String(n).padStart(4, '0');
+    function quote(advance=false){
+      let n=parseInt(localStorage.getItem('cfm_quote_counter')||'1',10)+(advance?1:0);
+      localStorage.setItem('cfm_quote_counter',n);
+      return 'QT-'+String(n).padStart(4,'0')
     }
 
-    function setQuote(advance = false) {
-      const q = quote(advance);
-      quoteNum.innerText = q;
-      quoteNumRef.innerText = q;
+    function setQuote(advance=false){
+      const q=quote(advance);
+      quoteNum.innerText=q;
+      quoteNumRef.innerText=q
     }
 
-    function init(advance = false) {
-      const d = new Date(), f = x => String(x).padStart(2, '0');
-      quoteDate.value = d.getFullYear() + '-' + f(d.getMonth() + 1) + '-' + f(d.getDate());
-      const e = new Date(d);
-      e.setDate(e.getDate() + 30);
-      expDate.value = e.getFullYear() + '-' + f(e.getMonth() + 1) + '-' + f(e.getDate());
-      setQuote(advance);
+    function init(advance=false){
+      const d=new Date(),
+            f=x=>String(x).padStart(2,'0');
+      quoteDate.value=d.getFullYear()+'-'+f(d.getMonth()+1)+'-'+f(d.getDate());
+      const e=new Date(d);
+      e.setDate(e.getDate()+30);
+      expDate.value=e.getFullYear()+'-'+f(e.getMonth()+1)+'-'+f(e.getDate());
+      setQuote(advance)
     }
 
-    let pending = false;
+    let pending=false;
 
-    function downloadPDF() {
-      if (pending) return;
-      pending = true;
-      const old = document.title;
-      document.title = quoteNum.innerText + ' - ' + (customerSearch.value.trim() || 'Customer');
+    function downloadPDF(){
+      if(pending) return;
+      pending=true;
+      const old=document.title;
+      document.title=quoteNum.innerText+' - '+(customerSearch.value.trim()||'Customer');
       window.print();
-      setTimeout(() => {
-        document.title = old;
-        pending = false;
+      setTimeout(()=>{
+        document.title=old;
+        pending=false;
         setQuote(true);
-      }, 1000);
+      },1000)
     }
 
-    window.addEventListener('afterprint', () => {
-      if (pending) {
-        pending = false;
-        setQuote(true);
+    window.addEventListener('afterprint',()=>{
+      if(pending){
+        pending=false;
+        setQuote(true)
       }
     });
 
-    function addNote() {
-      const d = document.createElement('div');
-      d.contentEditable = true;
-      d.className = 'note-box';
-      d.innerText = 'Enter note here...';
-      d.onclick = () => {
-        if (d.innerText === 'Enter note here...') d.innerText = '';
+    function addNote(){
+      const d=document.createElement('div');
+      d.contentEditable=true;
+      d.className='note-box';
+      d.innerText='Enter note here...';
+      d.onclick=()=>{
+        if(d.innerText==='Enter note here...') d.innerText=''
       };
-      notesArea.appendChild(d);
+      notesArea.appendChild(d)
     }
 
-    function resetQuote(e) {
-      e && e.preventDefault();
-      if (!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
+    function resetQuote(e){
+      e&&e.preventDefault();
+      if(!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
       tb.replaceChildren();
       notesArea.replaceChildren();
-      ['customerSearch', 'acctNumber', 'contactName', 'contactPhone', 'contactEmail', 'poJob', 'quotedBy', 'quotedByEmail'].forEach(id => document.getElementById(id).value = '');
-      quotedByDisplay.innerText = '—';
-      freight.value = '0';
-      selectedCustomer = null;
-      pending = false;
+      ['customerSearch','acctNumber','contactName','contactPhone','contactEmail','poJob','quotedBy','quotedByEmail'].forEach(id=>document.getElementById(id).value='');
+      quotedByDisplay.innerText='—';
+      freight.value='0';
+      selectedCustomer=null;
+      pending=false;
       init(false);
-      addRow();
+      addRow()
     }
 
-    window.onload = () => {
+    window.onload=()=>{
       init();
-      addRow();
+      addRow()
     };
   </script>
 </head>
@@ -621,7 +748,7 @@
   </div>
 
   <script>
-    today.innerText = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    today.innerText = new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
   </script>
 </body>
 </html>
