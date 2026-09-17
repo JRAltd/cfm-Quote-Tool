@@ -1,19 +1,62 @@
-/* Consistent spacing for the quote action buttons. */
+/* Quote action buttons */
 .noPrint.action-buttons {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   width: 100%;
-  margin-top: 16px;
-  margin-bottom: 24px !important;
-  justify-content: space-between;
+  margin: 14px 0 22px !important;
 }
 
 .noPrint.action-buttons button {
-  margin: 0;
   flex: 1 1 0;
   min-width: 120px;
+  min-height: 38px;
+  padding: 9px 14px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+/* Totals bar tuned to match the reference layout. */
+.subtotal-bar {
+  min-height: 62px;
+  padding: 12px 18px;
+  gap: 14px;
+  border-radius: 4px;
+}
+
+.subtotal-bar .label {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.subtotal-bar .amount {
+  font-size: 21px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.subtotal-bar .freight-input {
+  width: 112px;
+  height: 36px;
+  padding: 7px 12px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .noPrint.action-buttons {
+    gap: 9px;
+    margin-bottom: 20px !important;
+  }
+
+  .noPrint.action-buttons button {
+    min-width: 145px;
+  }
+
+  .subtotal-bar {
+    gap: 12px;
+    padding: 12px 16px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -24,6 +67,21 @@
   }
 
   .noPrint.action-buttons button {
-    flex: 1 1 calc(50% - 8px);
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .subtotal-bar {
+    min-height: 0;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .subtotal-bar .freight-input {
+    width: 100%;
+    height: 36px;
   }
 }
