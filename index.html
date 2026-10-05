@@ -16,6 +16,7 @@
       --surface: #ffffff;
       --text: #000000;
       --soft: #fafafa;
+      --sub-bg: #fdf6df;
       --total-bg: #12294d;
       --total-text: #ffffff;
     }
@@ -29,6 +30,7 @@
       --surface: #1f2937;
       --text: #f3f4f6;
       --soft: #263244;
+      --sub-bg: #3a3212;
       --total-bg: #1e3a8a;
       --total-text: #f8fafc;
     }
@@ -158,8 +160,8 @@
       font-weight: 500;
       line-height: 1.4;
     }
-    table.items tr:nth-child(even) { background: #f9f9f9; }
-    table.items tr:hover { background: #f0f0f0; }
+    table.items tr:nth-child(even) { background: var(--soft); }
+    table.items tr:hover { background: var(--bg); }
     .edit-box {
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -176,7 +178,6 @@
     .qty-col { width: 70px; text-align: center; }
     .qty-col input { width: 100%; text-align: center; }
     .right { text-align: right; }
-    .internal { display: none; }
     .row-actions { width: 100px; text-align: center; }
     .row-actions button {
       background: none;
@@ -194,7 +195,7 @@
     }
     .note-text { font-style: italic; color: var(--muted); font-weight: 600; }
     .project-subtotal td {
-      background: #fdf6df;
+      background: var(--sub-bg);
       border-top: 2px solid var(--gold);
       font-weight: 600;
       color: var(--text);
@@ -205,4 +206,548 @@
       gap: 10px;
       flex-wrap: wrap;
       width: 100%;
-      margin: 20px 0 28px
+      margin: 20px 0 28px 0;
+      justify-content: space-between;
+    }
+    .noPrint.action-buttons button {
+      margin: 0;
+      flex: 1 1 0;
+      min-width: 140px;
+      padding: 12px 16px;
+      background: var(--navy);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    .noPrint.action-buttons button:hover {
+      background: var(--dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .subtotal-bar {
+      background: var(--total-bg);
+      color: var(--total-text);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 24px;
+      border-radius: 4px;
+      border: 2px solid #000;
+    }
+    .label {
+      color: var(--total-text);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+    .amount { font-weight: 700; font-size: 22px; letter-spacing: 1px; }
+    .freight-input {
+      background: var(--surface);
+      color: var(--text);
+      border: 2px solid var(--line);
+      font-weight: 700;
+      width: 140px;
+      text-align: center;
+    }
+    .disclaimer {
+      font-size: 12px;
+      color: var(--text);
+      margin-top: 24px;
+      line-height: 1.8;
+      background: var(--soft);
+      padding: 16px;
+      border-radius: 4px;
+      border-left: 4px solid var(--gold);
+      font-weight: 500;
+    }
+    .quotedBy {
+      font-size: 12px;
+      color: var(--text);
+      margin-top: 16px;
+      font-weight: 500;
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 12px; }
+      .card { padding: 16px; }
+      .top { flex-direction: column; }
+      .brandTitle { font-size: 28px; }
+      .meta-table thead { display: none; }
+      .meta-table tr {
+        margin-bottom: 12px;
+        display: block;
+        border: 1px solid var(--line);
+        padding: 12px;
+        border-radius: 6px;
+      }
+      .meta-table tr td {
+        display: block;
+        text-align: right;
+        padding: 10px 0;
+        border: 0;
+      }
+      .meta-table tr td::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: bold;
+        color: var(--text);
+      }
+      .table-scroll { overflow-x: auto; }
+      table.items { width: 100%; }
+    }
+    
+    /* PRINT CSS FOR CLEANER PDFs */
+    @media print {
+      body { background: #fff; color: #111; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .wrap { padding: 0; max-width: none; margin: 0; }
+      .card { border: 0; box-shadow: none; padding: 15px; background: #fff; }
+      .noPrint, .internal { display: none !important; }
+      .dropdown { display: none !important; }
+      
+      .meta-table input, .contact-row input {
+        border: none;
+        background: transparent;
+        padding: 0;
+        color: #111;
+        font-weight: 500;
+        font-size: 13px;
+      }
+      
+      .meta-table { margin-bottom: 20px; }
+      .meta-table th { background: #12294d !important; color: #fff !important; font-weight: 700; padding: 10px; border: none; }
+      .meta-table td { color: #111; font-weight: 500; padding: 10px; border: 1px solid #e2e8f0; }
+      
+      .table-scroll { overflow: visible; }
+      
+      table.items { width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; }
+      table.items th {
+        background: #12294d !important; 
+        color: #fff !important; 
+        font-weight: 700; 
+        border: 1px solid #12294d; 
+        padding: 12px 10px; 
+        font-size: 12px;
+      }
+      table.items td {
+        color: #111;
+        font-weight: 500;
+        border: 1px solid #cbd5e1;
+        padding: 10px;
+        font-size: 12px;
+      }
+      table.items tr:nth-child(even) td { background: #f8fafc !important; }
+      
+      .edit-box { border: none; padding: 0; }
+      
+      table.items th:nth-child(1) { width: 15%; }
+      table.items th:nth-child(2) { width: 8%; }
+      table.items th:nth-child(3) { width: 22%; }
+      table.items th:nth-child(4) { width: 40%; }
+      table.items th:nth-child(7) { width: 15%; }
+      table.items th:nth-child(5), table.items th:nth-child(6) { display: none; }
+      
+      .subtotal-bar { 
+        background: #12294d !important; 
+        color: #fff !important; 
+        border: none; 
+        border-radius: 4px;
+        margin-top: 15px;
+      }
+      .subtotal-bar .label { color: #fff !important; font-weight: 700; font-size: 13px; }
+      .subtotal-bar .amount { color: #fff !important; font-weight: 700; font-size: 20px; }
+      .freight-input {
+        background: transparent;
+        color: #fff !important;
+        border: none;
+        font-weight: 700;
+        text-align: center;
+      }
+      .freight-input::placeholder { color: #a5b4fc; }
+      
+      .line-note td { background: #f1f5f9 !important; color: #334155; font-weight: 500; border: 1px solid #cbd5e1; }
+      .note-text { color: #334155; font-weight: 500; font-style: italic; }
+      .project-subtotal td {
+        background: #fdf6df !important;
+        color: #000;
+        font-weight: 700;
+        border: 1px solid #cbd5e1;
+        border-top: 2px solid #f2b705;
+      }
+      
+      .disclaimer {
+        color: #475569;
+        font-weight: 500;
+        background: transparent;
+        border: none;
+        border-left: 3px solid #f2b705;
+        padding-left: 10px;
+        margin-top: 20px;
+        font-size: 11px;
+      }
+      
+      .storeName { color: #12294d; font-weight: 700; }
+      .storeAddress { color: #475569; font-weight: 500; font-size: 11px; }
+      .brandTitle { color: #12294d; font-weight: 700; }
+      hr.accent { border: none; border-top: 3px solid #f2b705; margin: 16px 0; }
+      
+      body.cost-export .internal { display: table-cell !important; color: #111; font-weight: 500; }
+      body.cost-export .noPrint { display: none !important; }
+      body.cost-export .table-scroll { overflow: visible; }
+      body.cost-export table.items { min-width: 0; }
+      body.cost-export table.items td:nth-child(5), body.cost-export table.items td:nth-child(6) { display: table-cell !important; }
+      body.cost-export table.items th:nth-child(5), body.cost-export table.items th:nth-child(6) { display: table-cell !important; }
+      
+      body.cost-export table.items th:nth-child(1) { width: 12%; }
+      body.cost-export table.items th:nth-child(3) { width: 15%; }
+      body.cost-export table.items th:nth-child(4) { width: 28%; }
+      body.cost-export table.items th:nth-child(5), body.cost-export table.items th:nth-child(6) { width: 10%; }
+      body.cost-export table.items th:nth-child(7) { width: 15%; }
+    }
+  </style>
+  <script src="customers.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <button type="button" class="noPrint theme-toggle" id="themeToggle" onclick="toggleDarkMode()" aria-pressed="false" style="float: right;">☾ Dark Mode</button>
+      <div class="top">
+        <div>
+          <img src="logo-black.png" class="logo" alt="CFM Logo">
+          <div class="storeAddress">
+            <span class="storeName">cfm Distributor's inc</span><br>
+            4137 109th Street<br>
+            Urbandale, Iowa 50322
+          </div>
+        </div>
+        <div class="brandTitle">QUOTE</div>
+      </div>
+      <hr class="accent">
+      <table class="meta-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Quote Date</th>
+            <th>Expiration Date</th>
+            <th>PO# / Job</th>
+            <th>Quote #</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-label="Customer">
+              <div class="search-wrap">
+                <input id="customerSearch" type="text" placeholder="Search by name, city, or account #" onkeyup="onCustomerSearchInput()">
+                <div id="customerDropdown" class="customerDropdown"></div>
+              </div>
+            </td>
+            <td data-label="Quote Date"><input id="quoteDate" type="date"></td>
+            <td data-label="Expiration Date"><input id="expDate" type="date"></td>
+            <td data-label="PO# / Job"><input id="poNumber" placeholder="PO# / Job ID"></td>
+            <td data-label="Quote #"><strong id="quoteNumRef">10001</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="contact-row">
+        <div><label>Account #</label><input id="acctNumber"></div>
+        <div><label>Contact Name</label><input id="contactName"></div>
+        <div><label>Phone Number</label><input id="contactPhone"></div>
+      </div>
+      <div class="table-scroll">
+        <table class="items">
+          <thead>
+            <tr>
+              <th>Availability</th>
+              <th class="qty-col">Qty</th>
+              <th>Model/Part #</th>
+              <th>Item Name/Description</th>
+              <th class="internal right">Cost</th>
+              <th class="internal right">Markup</th>
+              <th class="right">Total</th>
+              <th class="noPrint">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+      <div id="notesArea"></div>
+      <div class="noPrint action-buttons">
+        <button type="button" onclick="addRow()">Add Line Item</button>
+        <button type="button" onclick="addLineNote()">Add Line Item Note</button>
+        <button type="button" onclick="addProjectSubtotal()">Add Project Subtotal</button>
+        <button type="button" onclick="addNote()">Add General Note</button>
+        <button type="button" onclick="downloadPDF()">📄 Download PDF</button>
+        <button type="button" onclick="exportCostPage()">💰 Export Cost Page</button>
+        <button type="button" onclick="resetQuote()">Reset Quote</button>
+      </div>
+      <div class="subtotal-bar">
+        <span class="label">SUBTOTAL</span>
+        <span class="amount" id="tot">$0.00</span>
+        <span class="label">FREIGHT $</span>
+        <input type="number" id="freight" class="freight-input" placeholder="0.00" min="0" step="0.01" oninput="calc()">
+      </div>
+      <div class="disclaimer">
+        <div class="line1"><strong>Pricing excludes applicable taxes and shipping costs unless otherwise noted.</strong></div>
+        <div class="line2">Prices subject to change without notice. Quoted prices valid for 30 days unless otherwise noted.</div>
+      </div>
+      <div class="quotedBy noPrint">
+        Quoted by: 
+        <select id="quotedBy" onchange="syncQuotedBy()">
+          <option value="">Select name</option>
+          <option value="Jeremy Allen" data-email="j.allen@cfmkc.com">Jeremy Allen</option>
+          <option value="David Smith" data-email="d.smith@cfmkc.com">David Smith</option>
+          <option value="Sarah Johnson" data-email="s.johnson@cfmkc.com">Sarah Johnson</option>
+          <option value="manual">Manual Entry</option>
+        </select>
+        <span class="quotedBy-display" id="quotedByDisplay"></span> 
+        <input id="manualQuotedBy" type="text" style="display:none;width:150px" oninput="syncQuotedBy()"> 
+        <input id="quotedByEmail" type="email" placeholder="Email (optional)" style="width:200px" readonly>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let selectedCustomer = null;
+    function esc(s) { return (s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+    function renderDropdown(ms, q) {
+      const d = document.getElementById('customerDropdown');
+      d.innerHTML = ms.length ? ms.map((c, i) => {
+        const [n, co, ph, , , , a] = c;
+        const m = [a ? 'Acct# ' + a : '', co, ph].filter(Boolean).join(' · ');
+        return `<div onclick="selectCustomer(${i})" style="padding:10px;cursor:pointer;border-bottom:1px solid #ccc;color:var(--text);font-weight:500">${esc(n)} <span style="color:var(--muted);font-size:12px">${esc(m)}</span></div>`;
+      }).join('') : '<div style="padding:10px;color:var(--text);font-weight:500">No results</div>';
+      d._matches = ms;
+      d.classList.add('show');
+    }
+    function onCustomerSearchInput() {
+      const q = document.getElementById('customerSearch').value.trim().toLowerCase();
+      selectedCustomer = null;
+      const d = document.getElementById('customerDropdown');
+      if (q.length < 2) return d.classList.remove('show');
+      
+      if (typeof CUSTOMERS === 'undefined') {
+        d.innerHTML = '<div style="padding:10px;color:var(--text);font-weight:500">Customer database not found</div>';
+        d.classList.add('show');
+        return;
+      }
+      
+      renderDropdown(CUSTOMERS.filter(c => c.some(v => (v || '').toLowerCase().includes(q))), q);
+    }
+    function selectCustomer(i) {
+      const c = document.getElementById('customerDropdown')._matches[i];
+      if (!c) return;
+      selectedCustomer = c;
+      const [n, co, ph, , , , a] = c;
+      document.getElementById('customerSearch').value = n;
+      document.getElementById('contactName').value = co || '';
+      document.getElementById('contactPhone').value = ph || '';
+      document.getElementById('acctNumber').value = a || '';
+      document.getElementById('customerDropdown').classList.remove('show');
+    }
+    document.addEventListener('click', e => {
+      const w = document.querySelector('.search-wrap');
+      if (w && !w.contains(e.target)) {
+        const d = document.getElementById('customerDropdown');
+        if (d) d.classList.remove('show');
+      }
+    });
+    
+    function actions() {
+      return '<td class="noPrint row-actions"><button type="button" class="move-button" onclick="moveRow(this,-1)" title="Move up" aria-label="Move up">▲</button><button type="button" class="move-button" onclick="moveRow(this,1)" title="Move down" aria-label="Move down">▼</button><button type="button" class="delete-button" onclick="deleteRow(this)" title="Delete row" aria-label="Delete row">✕</button></td>';
+    }
+    
+    function moveRow(b, d) {
+      const r = b.closest('tr');
+      const t = r.parentElement;
+      const a = [...t.children];
+      const i = a.indexOf(r);
+      const j = i + d;
+      if (j < 0 || j >= a.length) return;
+      const x = a[j];
+      d < 0 ? t.insertBefore(r, x) : t.insertBefore(x, r);
+      calc();
+    }
+    
+    function deleteRow(b) {
+      b.closest('tr').remove();
+      calc();
+    }
+    
+    function addRow() {
+      const tb = document.getElementById('tb');
+      const r = tb.insertRow();
+      r.className = 'item-row';
+      r.innerHTML = '<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time"></div></td><td class="qty-col"><input type="number" value="1" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description"></div></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="right"><span>$0.00</span></td>' + actions();
+    }
+    
+    function addLineNote() {
+      const tb = document.getElementById('tb');
+      const r = tb.insertRow();
+      r.className = 'line-note';
+      r.innerHTML = '<td colspan="7"><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td>' + actions();
+    }
+    
+    function addProjectSubtotal() {
+      const tb = document.getElementById('tb');
+      const r = tb.insertRow();
+      r.className = 'project-subtotal';
+      r.innerHTML = '<td colspan="6"><div class="edit-box" contenteditable="true" data-placeholder="Project / section name"></div></td><td class="right section-amount"><span>$0.00</span></td>' + actions();
+    }
+    
+    function money(n) {
+      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    
+    function calc() {
+      let total = 0, section = 0;
+      const tb = document.getElementById('tb');
+      const f = parseFloat(document.getElementById('freight').value) || 0;
+      
+      [...tb.rows].forEach(r => {
+        if (r.classList.contains('item-row')) {
+          const q = parseFloat(r.cells[1].children[0].value) || 0;
+          const c = parseFloat(r.cells[4].children[0].value) || 0;
+          const m = parseFloat(r.cells[5].children[0].value) || 0;
+          
+          // Reverted math back to original: Qty * Markup (ignoring Cost box for the total)
+          const s = q * m; 
+          
+          r.cells[6].children[0].innerText = money(s);
+          total += s;
+          section += s;
+        } else if (r.classList.contains('project-subtotal')) {
+          r.cells[1].children[0].innerText = money(section);
+          section = 0;
+        }
+      });
+      
+      document.getElementById('tot').innerText = money(total + f);
+    }
+    
+    function quote(advance = false) {
+      let n = 10001;
+      try {
+        let stored = parseInt(localStorage.getItem('cfm_quote_counter'), 10);
+        if (Number.isFinite(stored) && stored >= 10001) n = stored;
+        if (advance) {
+            n++;
+            localStorage.setItem('cfm_quote_counter', n);
+        }
+      } catch(e) {
+        // Fallback if browser blocks localStorage
+        if(advance) n++;
+      }
+      return n;
+    }
+    
+    function setQuote(advance = false) {
+      const q = quote(advance);
+      document.getElementById('quoteNumRef').innerText = q;
+    }
+    
+    function init(advance = false) {
+      const d = new Date();
+      const f = x => String(x).padStart(2, '0');
+      document.getElementById('quoteDate').value = d.getFullYear() + '-' + f(d.getMonth() + 1) + '-' + f(d.getDate());
+      const e = new Date(d);
+      e.setDate(e.getDate() + 30);
+      document.getElementById('expDate').value = e.getFullYear() + '-' + f(e.getMonth() + 1) + '-' + f(e.getDate());
+      setQuote(advance);
+    }
+    
+    let pending = null;
+    function printQuote(cost = false) {
+      if (pending) return;
+      pending = { advance: !cost, oldTitle: document.title };
+      document.body.classList.toggle('cost-export', cost);
+      document.title = document.getElementById('quoteNumRef').innerText + ' - ' + (document.getElementById('customerSearch').value || 'Quote');
+      window.print();
+      pending = { advance: !cost, oldTitle: document.title };
+    }
+    
+    function finishPrint() {
+      if (!pending) return;
+      const { advance, oldTitle } = pending;
+      pending = null;
+      document.title = oldTitle;
+      document.body.classList.remove('cost-export');
+      if (advance) setQuote(true);
+    }
+    
+    function downloadPDF() { printQuote(false); }
+    function exportCostPage() { printQuote(true); }
+    window.addEventListener('afterprint', () => { if (pending) finishPrint(); });
+    
+    function setDarkMode(enabled) {
+      document.body.classList.toggle('dark-mode', enabled);
+      try { localStorage.setItem('cfm_dark_mode', enabled ? '1' : '0'); } catch(e) {}
+      document.getElementById('themeToggle').innerText = enabled ? '☀ Light Mode' : '☾ Dark Mode';
+    }
+    
+    function toggleDarkMode() {
+      setDarkMode(!document.body.classList.contains('dark-mode'));
+    }
+    
+    function addNote() {
+      const n = document.getElementById('notesArea');
+      const d = document.createElement('div');
+      d.contentEditable = true;
+      d.className = 'edit-box note-text';
+      d.style.marginTop = '10px';
+      d.dataset.placeholder = 'Enter note here...';
+      n.appendChild(d);
+    }
+    
+    function syncQuotedBy() {
+      const qb = document.getElementById('quotedBy');
+      const manual = qb.value === 'manual';
+      const mqb = document.getElementById('manualQuotedBy');
+      const qbd = document.getElementById('quotedByDisplay');
+      const qbe = document.getElementById('quotedByEmail');
+      mqb.style.display = manual ? 'inline-block' : 'none';
+      qbe.readOnly = !manual;
+      if (manual) {
+        qbd.innerText = mqb.value;
+        qbe.value = '';
+      } else {
+        const opt = qb.options[qb.selectedIndex];
+        qbd.innerText = opt.value;
+        qbe.value = opt.getAttribute('data-email') || '';
+      }
+    }
+    
+    function resetQuote(e) {
+      if (e) e.preventDefault();
+      if (!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
+      document.getElementById('tb').replaceChildren();
+      document.getElementById('notesArea').replaceChildren();
+      ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
+      init();
+      addRow();
+      calc();
+    }
+    
+    window.onload = () => {
+      let isDark = false;
+      try { isDark = localStorage.getItem('cfm_dark_mode') === '1'; } catch(e) {}
+      setDarkMode(isDark);
+      
+      init();
+      addRow();
+      
+      const qb = document.getElementById('quotedBy');
+      for (let i = 0; i < qb.options.length; i++) {
+        if (qb.options[i].value === 'Jeremy Allen') {
+          qb.selectedIndex = i;
+          syncQuotedBy();
+          break;
+        }
+      }
+    };
+  </script>
+</body>
+</html>
