@@ -408,4 +408,371 @@
       body.cost-export .table-scroll { overflow: visible; }
       body.cost-export table.items { min-width: 0; }
       body.cost-export table.items td:nth-child(5), body.cost-export table.items td:nth-child(6) { display: table-cell !important; }
-      body.cost-export table.items th:nth-child(
+      body.cost-export table.items th:nth-child(5), body.cost-export table.items th:nth-child(6) { display: table-cell !important; }
+      
+      body.cost-export table.items th:nth-child(1) { width: 12%; }
+      body.cost-export table.items th:nth-child(3) { width: 15%; }
+      body.cost-export table.items th:nth-child(4) { width: 28%; }
+      body.cost-export table.items th:nth-child(5), body.cost-export table.items th:nth-child(6) { width: 10%; }
+      body.cost-export table.items th:nth-child(7) { width: 15%; }
+    }
+  </style>
+  <script src="customers.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <button type="button" class="noPrint theme-toggle" id="themeToggle" onclick="toggleDarkMode()" aria-pressed="false" style="float: right;">☾ Dark Mode</button>
+      <div class="top">
+        <div>
+          <img src="logo-black.png" class="logo" alt="CFM Logo">
+          <div class="storeAddress">
+            <span class="storeName">cfm Distributor's inc</span><br>
+            4137 109th Street<br>
+            Urbandale, Iowa 50322
+          </div>
+        </div>
+        <div class="brandTitle">QUOTE</div>
+      </div>
+      <hr class="accent">
+      <table class="meta-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Quote Date</th>
+            <th>Expiration Date</th>
+            <th>PO# / Job</th>
+            <th>Quote #</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-label="Customer">
+              <div class="search-wrap">
+                <input id="customerSearch" type="text" placeholder="Search by name, city, or account #" onkeyup="onCustomerSearchInput()">
+                <div id="customerDropdown" class="customerDropdown"></div>
+              </div>
+            </td>
+            <td data-label="Quote Date"><input id="quoteDate" type="date"></td>
+            <td data-label="Expiration Date"><input id="expDate" type="date"></td>
+            <td data-label="PO# / Job"><input id="poNumber" placeholder="PO# / Job ID"></td>
+            <td data-label="Quote #"><strong id="quoteNumRef">10001</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="contact-row">
+        <div><label>Account #</label><input id="acctNumber"></div>
+        <div><label>Contact Name</label><input id="contactName"></div>
+        <div><label>Phone Number</label><input id="contactPhone"></div>
+      </div>
+      <div class="table-scroll">
+        <table class="items">
+          <thead>
+            <tr>
+              <th>Availability</th>
+              <th class="qty-col">Qty</th>
+              <th>Model/Part #</th>
+              <th>Item Name/Description</th>
+              <th class="internal right">Cost</th>
+              <th class="internal right">Markup (%)</th>
+              <th class="right">Total</th>
+              <th class="noPrint">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+      <div id="notesArea"></div>
+      <div class="noPrint action-buttons">
+        <button type="button" onclick="addRow()">Add Line Item</button>
+        <button type="button" onclick="addLineNote()">Add Line Item Note</button>
+        <button type="button" onclick="addProjectSubtotal()">Add Project Subtotal</button>
+        <button type="button" onclick="addNote()">Add General Note</button>
+        <button type="button" onclick="downloadPDF()">📄 Download PDF</button>
+        <button type="button" onclick="exportCostPage()">💰 Export Cost Page</button>
+        <button type="button" onclick="resetQuote()">Reset Quote</button>
+      </div>
+      <div class="subtotal-bar">
+        <span class="label">SUBTOTAL</span>
+        <span class="amount" id="tot">$0.00</span>
+        <span class="label">FREIGHT $</span>
+        <input type="number" id="freight" class="freight-input" placeholder="0.00" min="0" step="0.01" oninput="calc()">
+      </div>
+      <div class="disclaimer">
+        <div class="line1"><strong>Pricing excludes applicable taxes and shipping costs unless otherwise noted.</strong></div>
+        <div class="line2">Prices subject to change without notice. Quoted prices valid for 30 days unless otherwise noted.</div>
+      </div>
+      <div class="quotedBy noPrint">
+        Quoted by: 
+        <select id="quotedBy" onchange="syncQuotedBy()">
+          <option value="">Select name</option>
+          <option value="Jeremy Allen" data-email="j.allen@cfmkc.com">Jeremy Allen</option>
+          <option value="David Smith" data-email="d.smith@cfmkc.com">David Smith</option>
+          <option value="Sarah Johnson" data-email="s.johnson@cfmkc.com">Sarah Johnson</option>
+          <option value="manual">Manual Entry</option>
+        </select>
+        <span class="quotedBy-display" id="quotedByDisplay"></span> 
+        <input id="manualQuotedBy" type="text" style="display:none;width:150px" oninput="syncQuotedBy()"> 
+        <input id="quotedByEmail" type="email" placeholder="Email (optional)" style="width:200px" readonly>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let selectedCustomer = null;
+    function esc(s) { return (s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+    function renderDropdown(ms, q) {
+      const d = document.getElementById('customerDropdown');
+      d.innerHTML = ms.length ? ms.map((c, i) => {
+        const [n, co, ph, , , , a] = c;
+        const m = [a ? 'Acct# ' + a : '', co, ph].filter(Boolean).join(' · ');
+        return `<div onclick="selectCustomer(${i})" style="padding:10px;cursor:pointer;border-bottom:1px solid #ccc;color:var(--text);font-weight:500">${esc(n)} <span style="color:var(--muted);font-size:12px">${esc(m)}</span></div>`;
+      }).join('') : '<div style="padding:10px;color:var(--text);font-weight:500">No results</div>';
+      d._matches = ms;
+      d.classList.add('show');
+    }
+    function onCustomerSearchInput() {
+      const q = document.getElementById('customerSearch').value.trim().toLowerCase();
+      selectedCustomer = null;
+      const d = document.getElementById('customerDropdown');
+      if (q.length < 2) return d.classList.remove('show');
+      
+      if (typeof CUSTOMERS === 'undefined') {
+        d.innerHTML = '<div style="padding:10px;color:var(--text);font-weight:500">Customer database not found</div>';
+        d.classList.add('show');
+        return;
+      }
+      
+      renderDropdown(CUSTOMERS.filter(c => c.some(v => (v || '').toLowerCase().includes(q))), q);
+    }
+    function selectCustomer(i) {
+      const c = document.getElementById('customerDropdown')._matches[i];
+      if (!c) return;
+      selectedCustomer = c;
+      const [n, co, ph, , , , a] = c;
+      document.getElementById('customerSearch').value = n;
+      document.getElementById('contactName').value = co || '';
+      document.getElementById('contactPhone').value = ph || '';
+      document.getElementById('acctNumber').value = a || '';
+      document.getElementById('customerDropdown').classList.remove('show');
+    }
+    document.addEventListener('click', e => {
+      const w = document.querySelector('.search-wrap');
+      if (w && !w.contains(e.target)) {
+        const d = document.getElementById('customerDropdown');
+        if (d) d.classList.remove('show');
+      }
+    });
+    
+    function actions() {
+      return '<td class="noPrint row-actions"><button type="button" class="move-button" onclick="moveRow(this,-1)" title="Move up" aria-label="Move up">▲</button><button type="button" class="move-button" onclick="moveRow(this,1)" title="Move down" aria-label="Move down">▼</button><button type="button" class="delete-button" onclick="deleteRow(this)" title="Delete row" aria-label="Delete row">✕</button></td>';
+    }
+    
+    function moveRow(b, d) {
+      const r = b.closest('tr');
+      const t = r.parentElement;
+      const a = [...t.children];
+      const i = a.indexOf(r);
+      const j = i + d;
+      if (j < 0 || j >= a.length) return;
+      const x = a[j];
+      d < 0 ? t.insertBefore(r, x) : t.insertBefore(x, r);
+      calc();
+    }
+    
+    function deleteRow(b) {
+      b.closest('tr').remove();
+      calc();
+    }
+    
+    function addRow() {
+      const tb = document.getElementById('tb');
+      const r = tb.insertRow();
+      r.className = 'item-row';
+      r.innerHTML = '<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time"></div></td><td class="qty-col"><input type="number" value="1" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description"></div></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="right"><span>$0.00</span></td>' + actions();
+    }
+    
+    function addLineNote() {
+      const tb = document.getElementById('tb');
+      const r = tb.insertRow();
+      r.className = 'line-note';
+      r.innerHTML = '<td></td><td></td><td></td><td><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td><td class="internal"></td><td class="internal"></td><td></td>' + actions();
+    }
+    
+    function addProjectSubtotal() {
+      const tb = document.getElementById('tb');
+      const r = tb.insertRow();
+      r.className = 'project-subtotal';
+      r.innerHTML = '<td></td><td></td><td class="right" style="padding-right:15px; font-weight:bold;">Subtotal:</td><td><div class="edit-box" contenteditable="true" data-placeholder="Section name (optional)"></div></td><td class="internal"></td><td class="internal"></td><td class="right section-amount"><span>$0.00</span></td>' + actions();
+      calc(); 
+    }
+    
+    function money(n) {
+      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    
+    function calc() {
+      let total = 0, section = 0;
+      const tb = document.getElementById('tb');
+      const f = parseFloat(document.getElementById('freight').value) || 0;
+      
+      [...tb.rows].forEach(r => {
+        if (r.classList.contains('item-row')) {
+          const q = parseFloat(r.cells[1].children[0].value) || 0;
+          const c = parseFloat(r.cells[4].children[0].value) || 0;
+          const m = parseFloat(r.cells[5].children[0].value) || 0;
+          
+          let unitPrice = 0;
+          if (c > 0) {
+            unitPrice = c + (c * (m / 100));
+          } else {
+            unitPrice = m;
+          }
+          
+          const s = q * unitPrice; 
+          
+          r.cells[6].children[0].innerText = money(s);
+          total += s;
+          section += s;
+        } else if (r.classList.contains('project-subtotal')) {
+          r.cells[6].children[0].innerText = money(section);
+          section = 0;
+        }
+      });
+      
+      document.getElementById('tot').innerText = money(total + f);
+    }
+    
+    function quote(advance = false) {
+      let n = 10001;
+      try {
+        let stored = parseInt(localStorage.getItem('cfm_quote_counter'), 10);
+        if (Number.isFinite(stored) && stored >= 10001) n = stored;
+        if (advance) {
+            n++;
+            localStorage.setItem('cfm_quote_counter', n);
+        }
+      } catch(e) {
+        if(advance) n++;
+      }
+      return n;
+    }
+    
+    function setQuote(advance = false) {
+      const q = quote(advance);
+      document.getElementById('quoteNumRef').innerText = q;
+    }
+    
+    function init(advance = false) {
+      const d = new Date();
+      const f = x => String(x).padStart(2, '0');
+      document.getElementById('quoteDate').value = d.getFullYear() + '-' + f(d.getMonth() + 1) + '-' + f(d.getDate());
+      const e = new Date(d);
+      e.setDate(e.getDate() + 30);
+      document.getElementById('expDate').value = e.getFullYear() + '-' + f(e.getMonth() + 1) + '-' + f(e.getDate());
+      setQuote(advance);
+    }
+    
+    let pending = null;
+    function printQuote(cost = false) {
+      if (pending) return; 
+      
+      pending = { advance: !cost, oldTitle: document.title };
+      
+      if (cost) {
+        document.body.classList.add('cost-export');
+      } else {
+        document.body.classList.remove('cost-export');
+      }
+      
+      document.title = document.getElementById('quoteNumRef').innerText + ' - ' + (document.getElementById('customerSearch').value || 'Quote');
+      
+      setTimeout(() => {
+        window.print();
+        setTimeout(finishPrint, 1500); 
+      }, 100);
+    }
+    
+    function finishPrint() {
+      if (!pending) return;
+      const { advance, oldTitle } = pending;
+      pending = null; 
+      document.title = oldTitle;
+      document.body.classList.remove('cost-export');
+      if (advance) setQuote(true);
+    }
+    
+    function downloadPDF() { printQuote(false); }
+    function exportCostPage() { printQuote(true); }
+    
+    window.addEventListener('afterprint', finishPrint);
+    
+    function setDarkMode(enabled) {
+      document.body.classList.toggle('dark-mode', enabled);
+      try { localStorage.setItem('cfm_dark_mode', enabled ? '1' : '0'); } catch(e) {}
+      document.getElementById('themeToggle').innerText = enabled ? '☀ Light Mode' : '☾ Dark Mode';
+    }
+    
+    function toggleDarkMode() {
+      setDarkMode(!document.body.classList.contains('dark-mode'));
+    }
+    
+    function addNote() {
+      const n = document.getElementById('notesArea');
+      const d = document.createElement('div');
+      d.contentEditable = true;
+      d.className = 'edit-box note-text';
+      d.style.marginTop = '10px';
+      d.dataset.placeholder = 'Enter note here...';
+      n.appendChild(d);
+    }
+    
+    function syncQuotedBy() {
+      const qb = document.getElementById('quotedBy');
+      const manual = qb.value === 'manual';
+      const mqb = document.getElementById('manualQuotedBy');
+      const qbd = document.getElementById('quotedByDisplay');
+      const qbe = document.getElementById('quotedByEmail');
+      mqb.style.display = manual ? 'inline-block' : 'none';
+      qbe.readOnly = !manual;
+      if (manual) {
+        qbd.innerText = mqb.value;
+        qbe.value = '';
+      } else {
+        const opt = qb.options[qb.selectedIndex];
+        qbd.innerText = opt.value;
+        qbe.value = opt.getAttribute('data-email') || '';
+      }
+    }
+    
+    function resetQuote(e) {
+      if (e) e.preventDefault();
+      if (!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
+      document.getElementById('tb').replaceChildren();
+      document.getElementById('notesArea').replaceChildren();
+      ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
+      init();
+      addRow();
+      calc();
+    }
+    
+    window.onload = () => {
+      let isDark = false;
+      try { isDark = localStorage.getItem('cfm_dark_mode') === '1'; } catch(e) {}
+      setDarkMode(isDark);
+      
+      init();
+      addRow();
+      
+      const qb = document.getElementById('quotedBy');
+      for (let i = 0; i < qb.options.length; i++) {
+        if (qb.options[i].value === 'Jeremy Allen') {
+          qb.selectedIndex = i;
+          syncQuotedBy();
+          break;
+        }
+      }
+    };
+  </script>
+</body>
+</html>
