@@ -105,6 +105,14 @@
       font-weight: 500;
     }
     .meta-table input, .contact-row input { width: 100%; }
+    
+    /* Highlight the quote box a bit more */
+    #quoteNumRef {
+      font-weight: bold;
+      color: var(--navy);
+      background: var(--soft);
+    }
+    
     .search-wrap { position: relative; }
     .customerDropdown {
       position: absolute;
@@ -275,40 +283,25 @@
       margin-top: 16px;
       font-weight: 500;
     }
-    @media (max-width: 640px) {
-      .wrap { padding: 12px; }
-      .card { padding: 16px; }
-      .top { flex-direction: column; }
-      .brandTitle { font-size: 28px; }
-      .meta-table thead { display: none; }
-      .meta-table tr {
-        margin-bottom: 12px;
-        display: block;
-        border: 1px solid var(--line);
-        padding: 12px;
-        border-radius: 6px;
-      }
-      .meta-table tr td {
-        display: block;
-        text-align: right;
-        padding: 10px 0;
-        border: 0;
-      }
-      .meta-table tr td::before {
-        content: attr(data-label);
-        float: left;
-        font-weight: bold;
-        color: var(--text);
-      }
-      .table-scroll { overflow-x: auto; }
-      table.items { width: 100%; }
-    }
     
     /* PRINT CSS FOR CLEANER PDFs */
+    /* This @page rule completely removes browser headers and footers (URL, Date, Page Numbers) */
+    @page { 
+      size: auto; 
+      margin: 0; 
+    }
+    
     @media print {
-      body { background: #fff; color: #111; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { 
+        background: #fff; 
+        color: #111; 
+        margin: 0; 
+        padding: 1.5cm; /* Restores safe margin around content so it isn't against the paper edge */
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact; 
+      }
       .wrap { padding: 0; max-width: none; margin: 0; }
-      .card { border: 0; box-shadow: none; padding: 15px; background: #fff; }
+      .card { border: 0; box-shadow: none; padding: 0; background: #fff; }
       .noPrint, .internal { display: none !important; }
       .dropdown { display: none !important; }
       
@@ -320,6 +313,9 @@
         font-weight: 500;
         font-size: 13px;
       }
+      
+      /* Make sure the Quote Number looks like bold text in the PDF */
+      #quoteNumRef { font-weight: bold; color: #111; }
       
       .meta-table { margin-bottom: 20px; }
       .meta-table th { background: #12294d !important; color: #fff !important; font-weight: 700; padding: 10px; border: none; }
@@ -456,7 +452,10 @@
             <td data-label="Quote Date"><input id="quoteDate" type="date"></td>
             <td data-label="Expiration Date"><input id="expDate" type="date"></td>
             <td data-label="PO# / Job"><input id="poNumber" placeholder="PO# / Job ID"></td>
-            <td data-label="Quote #"><strong id="quoteNumRef">10001</strong></td>
+            
+            <!-- Changed to an actual input box so you can manually edit it if needed -->
+            <td data-label="Quote #"><input type="number" id="quoteNumRef" onchange="manualQuoteOverride(this.value)"></td>
+            
           </tr>
         </tbody>
       </table>
@@ -643,6 +642,14 @@
       document.getElementById('tot').innerText = money(total + f);
     }
     
+    // Allows you to manually type a number in the box to overwrite the saved counter
+    function manualQuoteOverride(val) {
+      const n = parseInt(val, 10);
+      if (Number.isFinite(n) && n >= 10001) {
+        try { localStorage.setItem('cfm_quote_counter', n); } catch(e) {}
+      }
+    }
+    
     function quote(advance = false) {
       let n = 10001;
       try {
@@ -660,7 +667,8 @@
     
     function setQuote(advance = false) {
       const q = quote(advance);
-      document.getElementById('quoteNumRef').innerText = q;
+      // Updates the input box visually instantly
+      document.getElementById('quoteNumRef').value = q;
     }
     
     function init(advance = false) {
@@ -674,9 +682,11 @@
     }
     
     let pending = null;
+    
     function printQuote(cost = false) {
       if (pending) return; 
       
+      // We ONLY set advance to true if we are doing a normal PDF download (cost = false)
       pending = { advance: !cost, oldTitle: document.title };
       
       if (cost) {
@@ -685,11 +695,12 @@
         document.body.classList.remove('cost-export');
       }
       
-      document.title = document.getElementById('quoteNumRef').innerText + ' - ' + (document.getElementById('customerSearch').value || 'Quote');
+      document.title = document.getElementById('quoteNumRef').value + ' - ' + (document.getElementById('customerSearch').value || 'Quote');
       
       setTimeout(() => {
         window.print();
-        setTimeout(finishPrint, 1500); 
+        // The script hangs here while the print window is open, then runs finishPrint() the second it closes
+        finishPrint(); 
       }, 100);
     }
     
@@ -699,12 +710,17 @@
       pending = null; 
       document.title = oldTitle;
       document.body.classList.remove('cost-export');
-      if (advance) setQuote(true);
+      
+      // If we clicked Download PDF, advance will be true. This updates the counter and visually changes the box!
+      if (advance) {
+        setQuote(true); 
+      }
     }
     
     function downloadPDF() { printQuote(false); }
     function exportCostPage() { printQuote(true); }
     
+    // Fallback incase the setTimeout fails
     window.addEventListener('afterprint', finishPrint);
     
     function setDarkMode(enabled) {
@@ -751,6 +767,8 @@
       document.getElementById('tb').replaceChildren();
       document.getElementById('notesArea').replaceChildren();
       ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
+      
+      // Init grabs the current quote number (doesn't advance it) so it stays correct
       init();
       addRow();
       calc();
