@@ -6,7 +6,7 @@
   <title>cfm Quote Tool</title>
   <style>
     :root{--navy:#12294d;--dark:#0d1f3a;--gold:#f2b705;--bg:#ffffff;--line:#cccccc;--muted:#000000;--page:#ffffff;--surface:#ffffff;--text:#000000;--soft:#ffffff;--total-bg:#12294d;--total-text:#fff;--table-head:#0d1f3a;--table-alt:#ffffff}
-    body.dark-mode{--navy:#9fc3ff;--dark:#dbeafe;--bg:#2a2a2a;--line:#404040;--muted:#ffffff;--page:#1a1a1a;--surface:#222222;--text:#f3f4f6;--soft:#1a1a1a;--total-bg:#1e3a8a;--total-text:#f8fafc;--table-head:#1e3a8a;--table-alt:#1d2430}
+    body.dark-mode{--navy:#9fc3ff;--dark:#dbeafe;--bg:#2a2a2a;--line:#404040;--muted:#ffffff;--page:#1a1a1a;--surface:#222222;--text:#ffffff;--soft:#1a1a1a;--total-bg:#1e3a8a;--total-text:#f8fafc;--table-head:#1e3a8a;--table-alt:#1d2430}
     *{box-sizing:border-box}
     body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--page);color:var(--text)}
     .wrap{max-width:1100px;margin:auto;padding:24px}.card{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:32px;box-shadow:none}
@@ -23,15 +23,18 @@
     table.items tbody tr:nth-child(odd){background:var(--surface)}
     table.items tbody tr:hover{background:var(--surface)}
     .line-note td{background:transparent;font-weight:700;color:var(--text)}.note-text{font-style:italic;color:var(--text);font-weight:700}.project-subtotal td{background:#ffffff;border-top:1px solid var(--line);font-weight:700;color:var(--text);padding:12px 10px}
+    body.dark-mode .project-subtotal td{background:#222222}
     .noPrint.action-buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;margin:20px 0 28px;justify-content:space-between}.noPrint.action-buttons button{margin:0;flex:1 1 0;min-width:140px;padding:12px 16px;background:var(--navy);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s ease}
     .noPrint.action-buttons button:hover{background:var(--dark);transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}
     .subtotal-bar{background:transparent;color:var(--text);display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:20px;padding:16px 24px;border-radius:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:700}
     .label{color:var(--text);font-weight:700;font-size:14px;letter-spacing:0.5px}.amount{font-weight:700;font-size:22px;letter-spacing:1px;color:var(--text)}
     .freight-input{background:var(--surface);color:var(--text);border:1px solid var(--line);font-weight:700;width:140px;text-align:center}
     .disclaimer{font-size:12px;color:var(--text);margin-top:24px;line-height:1.8;background:transparent;padding:0;border:none;font-weight:600}
-    .quotedBy{font-size:12px;color:var(--text);margin-top:16px;font-weight:600}
-    .quotedBy select,.quotedBy input[type="email"]{color:var(--text);background:var(--surface);border:1px solid var(--line);font-weight:600}
-    .quotedBy-display{color:var(--text);font-weight:700;font-size:13px;margin-left:6px}
+    .quotedBy{font-size:12px;color:var(--text);margin-top:16px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .quotedBy select{color:var(--text);background:var(--surface);border:1px solid var(--line);font-weight:600;padding:6px 8px}
+    .quotedBy input[type="text"]{color:var(--text);background:var(--surface);border:1px solid var(--line);font-weight:600}
+    .quotedBy input[type="email"]{color:var(--text);background:var(--surface);border:1px solid var(--line);font-weight:600}
+    .quotedBy-display{color:var(--text);font-weight:700;font-size:13px}
     @media(max-width:640px){.wrap{padding:12px}.card{padding:16px}.top{flex-direction:column}.brandTitle{font-size:28px}.meta-table thead{display:none}.meta-table tr{margin-bottom:12px;display:block;border:1px solid var(--line);padding:12px;border-radius:4px}.meta-table tr td{display:block;text-align:right;padding:10px 0;border:0}.meta-table tr td::before{content:attr(data-label);float:left;font-weight:bold;color:var(--text)}.table-scroll{overflow-x:auto}table.items{width:100%}}
     @media print{
       body{background:#fff;color:#000;margin:0;padding:0}
