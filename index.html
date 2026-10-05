@@ -466,7 +466,7 @@
               <th>Model/Part #</th>
               <th>Item Name/Description</th>
               <th class="internal right">Cost</th>
-              <th class="internal right">Markup</th>
+              <th class="internal right">Markup (%)</th>
               <th class="right">Total</th>
               <th class="noPrint">Actions</th>
             </tr>
@@ -602,6 +602,7 @@
       return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
     
+    // UPDATED MATH LOGIC
     function calc() {
       let total = 0, section = 0;
       const tb = document.getElementById('tb');
@@ -613,8 +614,18 @@
           const c = parseFloat(r.cells[4].children[0].value) || 0;
           const m = parseFloat(r.cells[5].children[0].value) || 0;
           
-          // Reverted math back to original: Qty * Markup (ignoring Cost box for the total)
-          const s = q * m; 
+          let unitPrice = 0;
+          
+          // If there is a Cost, treat the Markup box as a percentage (e.g., 25 = 25% markup)
+          if (c > 0) {
+            unitPrice = c + (c * (m / 100));
+          } 
+          // If Cost is 0 or blank, treat the Markup box as a flat manual price override
+          else {
+            unitPrice = m;
+          }
+          
+          const s = q * unitPrice; 
           
           r.cells[6].children[0].innerText = money(s);
           total += s;
@@ -638,7 +649,6 @@
             localStorage.setItem('cfm_quote_counter', n);
         }
       } catch(e) {
-        // Fallback if browser blocks localStorage
         if(advance) n++;
       }
       return n;
