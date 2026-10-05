@@ -178,6 +178,7 @@
     .qty-col { width: 70px; text-align: center; }
     .qty-col input { width: 100%; text-align: center; }
     .right { text-align: right; }
+    .internal { display: none; }
     .row-actions { width: 100px; text-align: center; }
     .row-actions button {
       background: none;
@@ -188,12 +189,14 @@
     }
     .move-button { color: var(--navy); }
     .delete-button { color: #dc2626; }
+    
     .line-note td {
       background: var(--soft);
       font-weight: 600;
       color: var(--text);
     }
     .note-text { font-style: italic; color: var(--muted); font-weight: 600; }
+    
     .project-subtotal td {
       background: var(--sub-bg);
       border-top: 2px solid var(--gold);
@@ -351,12 +354,21 @@
       table.items th:nth-child(7) { width: 15%; }
       table.items th:nth-child(5), table.items th:nth-child(6) { display: none; }
       
+      /* Block layout bypasses flexbox print bugs so this can never run off the screen */
       .subtotal-bar { 
+        display: block !important;
+        text-align: right;
         background: #12294d !important; 
         color: #fff !important; 
         border: none; 
         border-radius: 4px;
         margin-top: 15px;
+        padding: 12px 16px;
+      }
+      .subtotal-bar > * {
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 15px;
       }
       .subtotal-bar .label { color: #fff !important; font-weight: 700; font-size: 13px; }
       .subtotal-bar .amount { color: #fff !important; font-weight: 700; font-size: 20px; }
@@ -581,183 +593,4 @@
       const tb = document.getElementById('tb');
       const r = tb.insertRow();
       r.className = 'item-row';
-      r.innerHTML = '<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time"></div></td><td class="qty-col"><input type="number" value="1" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description"></div></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="right"><span>$0.00</span></td>' + actions();
-    }
-    
-    function addLineNote() {
-      const tb = document.getElementById('tb');
-      const r = tb.insertRow();
-      r.className = 'line-note';
-      r.innerHTML = '<td colspan="7"><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td>' + actions();
-    }
-    
-    function addProjectSubtotal() {
-      const tb = document.getElementById('tb');
-      const r = tb.insertRow();
-      r.className = 'project-subtotal';
-      r.innerHTML = '<td colspan="6"><div class="edit-box" contenteditable="true" data-placeholder="Project / section name"></div></td><td class="right section-amount"><span>$0.00</span></td>' + actions();
-    }
-    
-    function money(n) {
-      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
-    
-    // UPDATED MATH LOGIC
-    function calc() {
-      let total = 0, section = 0;
-      const tb = document.getElementById('tb');
-      const f = parseFloat(document.getElementById('freight').value) || 0;
-      
-      [...tb.rows].forEach(r => {
-        if (r.classList.contains('item-row')) {
-          const q = parseFloat(r.cells[1].children[0].value) || 0;
-          const c = parseFloat(r.cells[4].children[0].value) || 0;
-          const m = parseFloat(r.cells[5].children[0].value) || 0;
-          
-          let unitPrice = 0;
-          
-          // If there is a Cost, treat the Markup box as a percentage (e.g., 25 = 25% markup)
-          if (c > 0) {
-            unitPrice = c + (c * (m / 100));
-          } 
-          // If Cost is 0 or blank, treat the Markup box as a flat manual price override
-          else {
-            unitPrice = m;
-          }
-          
-          const s = q * unitPrice; 
-          
-          r.cells[6].children[0].innerText = money(s);
-          total += s;
-          section += s;
-        } else if (r.classList.contains('project-subtotal')) {
-          r.cells[1].children[0].innerText = money(section);
-          section = 0;
-        }
-      });
-      
-      document.getElementById('tot').innerText = money(total + f);
-    }
-    
-    function quote(advance = false) {
-      let n = 10001;
-      try {
-        let stored = parseInt(localStorage.getItem('cfm_quote_counter'), 10);
-        if (Number.isFinite(stored) && stored >= 10001) n = stored;
-        if (advance) {
-            n++;
-            localStorage.setItem('cfm_quote_counter', n);
-        }
-      } catch(e) {
-        if(advance) n++;
-      }
-      return n;
-    }
-    
-    function setQuote(advance = false) {
-      const q = quote(advance);
-      document.getElementById('quoteNumRef').innerText = q;
-    }
-    
-    function init(advance = false) {
-      const d = new Date();
-      const f = x => String(x).padStart(2, '0');
-      document.getElementById('quoteDate').value = d.getFullYear() + '-' + f(d.getMonth() + 1) + '-' + f(d.getDate());
-      const e = new Date(d);
-      e.setDate(e.getDate() + 30);
-      document.getElementById('expDate').value = e.getFullYear() + '-' + f(e.getMonth() + 1) + '-' + f(e.getDate());
-      setQuote(advance);
-    }
-    
-    let pending = null;
-    function printQuote(cost = false) {
-      if (pending) return;
-      pending = { advance: !cost, oldTitle: document.title };
-      document.body.classList.toggle('cost-export', cost);
-      document.title = document.getElementById('quoteNumRef').innerText + ' - ' + (document.getElementById('customerSearch').value || 'Quote');
-      window.print();
-      pending = { advance: !cost, oldTitle: document.title };
-    }
-    
-    function finishPrint() {
-      if (!pending) return;
-      const { advance, oldTitle } = pending;
-      pending = null;
-      document.title = oldTitle;
-      document.body.classList.remove('cost-export');
-      if (advance) setQuote(true);
-    }
-    
-    function downloadPDF() { printQuote(false); }
-    function exportCostPage() { printQuote(true); }
-    window.addEventListener('afterprint', () => { if (pending) finishPrint(); });
-    
-    function setDarkMode(enabled) {
-      document.body.classList.toggle('dark-mode', enabled);
-      try { localStorage.setItem('cfm_dark_mode', enabled ? '1' : '0'); } catch(e) {}
-      document.getElementById('themeToggle').innerText = enabled ? '☀ Light Mode' : '☾ Dark Mode';
-    }
-    
-    function toggleDarkMode() {
-      setDarkMode(!document.body.classList.contains('dark-mode'));
-    }
-    
-    function addNote() {
-      const n = document.getElementById('notesArea');
-      const d = document.createElement('div');
-      d.contentEditable = true;
-      d.className = 'edit-box note-text';
-      d.style.marginTop = '10px';
-      d.dataset.placeholder = 'Enter note here...';
-      n.appendChild(d);
-    }
-    
-    function syncQuotedBy() {
-      const qb = document.getElementById('quotedBy');
-      const manual = qb.value === 'manual';
-      const mqb = document.getElementById('manualQuotedBy');
-      const qbd = document.getElementById('quotedByDisplay');
-      const qbe = document.getElementById('quotedByEmail');
-      mqb.style.display = manual ? 'inline-block' : 'none';
-      qbe.readOnly = !manual;
-      if (manual) {
-        qbd.innerText = mqb.value;
-        qbe.value = '';
-      } else {
-        const opt = qb.options[qb.selectedIndex];
-        qbd.innerText = opt.value;
-        qbe.value = opt.getAttribute('data-email') || '';
-      }
-    }
-    
-    function resetQuote(e) {
-      if (e) e.preventDefault();
-      if (!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
-      document.getElementById('tb').replaceChildren();
-      document.getElementById('notesArea').replaceChildren();
-      ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
-      init();
-      addRow();
-      calc();
-    }
-    
-    window.onload = () => {
-      let isDark = false;
-      try { isDark = localStorage.getItem('cfm_dark_mode') === '1'; } catch(e) {}
-      setDarkMode(isDark);
-      
-      init();
-      addRow();
-      
-      const qb = document.getElementById('quotedBy');
-      for (let i = 0; i < qb.options.length; i++) {
-        if (qb.options[i].value === 'Jeremy Allen') {
-          qb.selectedIndex = i;
-          syncQuotedBy();
-          break;
-        }
-      }
-    };
-  </script>
-</body>
-</html>
+      r.innerHTML = '<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time"></div></td><td class="qty-col"><input type="number" value
