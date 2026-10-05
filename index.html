@@ -5,25 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>cfm Quote Tool</title>
   <style>
-    :root{--navy:#12294d;--dark:#0d1f3a;--gold:#f2b705;--bg:#ffffff;--line:#cccccc;--muted:#000000;--page:#ffffff;--surface:#ffffff;--text:#000000;--soft:#ffffff;--total-bg:#12294d;--total-text:#fff;--table-head:#0d1f3a;--table-alt:#ffffff}
-    body.dark-mode{--navy:#9fc3ff;--dark:#dbeafe;--bg:#2a2a2a;--line:#404040;--muted:#ffffff;--page:#1a1a1a;--surface:#222222;--text:#ffffff;--soft:#1a1a1a;--total-bg:#1e3a8a;--total-text:#f8fafc;--table-head:#1e3a8a;--table-alt:#1d2430}
+    :root{--navy:#12294d;--dark:#0d1f3a;--gold:#f2b705;--bg:#f4f6f8;--line:#cdd5df;--muted:#374151;--page:#f8fafc;--surface:#fff;--text:#111827;--soft:#f9fafb;--total-bg:#12294d;--total-text:#fff;--table-head:#0f172a;--table-alt:#f8fafc}
+    body.dark-mode{--navy:#bfdbfe;--dark:#dbeafe;--bg:#1f2937;--line:#4b5563;--muted:#d1d5db;--page:#0b1220;--surface:#111827;--text:#f8fafc;--soft:#182334;--total-bg:#1d4ed8;--total-text:#f8fafc;--table-head:#1e3a8a;--table-alt:#111827}
     *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--page);color:var(--text)}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--page);color:var(--text);font-weight:500}
     .wrap{max-width:1100px;margin:auto;padding:24px}.card{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:32px;box-shadow:none}
-    .top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.logo{height:56px}.brandTitle{font-size:36px;font-weight:bold;color:var(--text);letter-spacing:2px}
-    .storeAddress{font-size:12px;margin-top:8px;line-height:1.5;color:var(--text);font-weight:600}.storeName{color:var(--text);font-weight:bold;font-size:16px}
+    .top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.logo{height:56px}.brandTitle{font-size:36px;font-weight:bold;color:var(--navy);letter-spacing:2px}
+    .storeAddress{font-size:12px;margin-top:8px;line-height:1.5;color:var(--text);font-weight:600}.storeName{color:var(--navy);font-weight:bold;font-size:16px}
     hr.accent{border:0;border-top:2px solid var(--gold);margin:18px 0 20px}.meta-table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px}.meta-table th{background:transparent;text-align:left;padding:12px 8px;font-size:13px;border-bottom:1px solid var(--line);color:var(--text);font-weight:700}
     .meta-table td{padding:12px 8px;border-bottom:1px solid var(--line);color:var(--text);font-weight:600}
     input,select{border:1px solid var(--line);border-radius:4px;padding:8px;font-size:14px;background:var(--surface);color:var(--text);font-weight:600}.meta-table input,.contact-row input{width:100%}.search-wrap{position:relative}.customerDropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:4px;max-height:300px;overflow-y:auto;z-index:1000;display:none;box-shadow:0 2px 4px rgba(0,0,0,0.1)}.customerDropdown.show{display:block}
-    .contact-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}.contact-row>div{flex:1;min-width:180px}.contact-row label{display:block;font-size:11px;color:var(--text);margin-bottom:4px;text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+    .contact-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}.contact-row>div{flex:1;min-width:180px}.contact-row label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;font-weight:700;letter-spacing:.5px}
     table.items{width:100%;border-collapse:collapse;margin-top:6px;min-width:900px}
     table.items th{background:var(--table-head);color:#fff;text-align:left;padding:12px 10px;font-size:13px;font-weight:700;border:1px solid var(--line);letter-spacing:0.3px}
     table.items td{padding:12px 10px;border:1px solid var(--line);color:var(--text);font-weight:600;line-height:1.4;vertical-align:top}
     table.items tbody tr:nth-child(even){background:var(--table-alt)}
     table.items tbody tr:nth-child(odd){background:var(--surface)}
     table.items tbody tr:hover{background:var(--surface)}
-    table.items tbody tr.item-row input{width:100%;border:1px solid #ccc;padding:6px;font-size:13px}
-    .line-note td{background:transparent;font-weight:700;color:var(--text)}.note-text{font-style:italic;color:var(--text);font-weight:700}.project-subtotal td{background:#ffffff;border-top:1px solid var(--line);font-weight:700;color:var(--text);padding:12px 10px}
+    table.items tbody tr.item-row input{width:100%;border:1px solid #b8c0cc;padding:6px;font-size:13px;color:var(--text);background:var(--surface)}
+    .line-note td{background:transparent;font-weight:700;color:var(--text)}.note-text{font-style:italic;color:var(--text);font-weight:700}.project-subtotal td{background:#fff;border-top:1px solid var(--line);font-weight:700;color:var(--text);padding:12px 10px}
     body.dark-mode .project-subtotal td{background:#222222}
     .noPrint.action-buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;margin:20px 0 28px;justify-content:space-between}.noPrint.action-buttons button{margin:0;flex:1 1 0;min-width:140px;padding:12px 16px;background:var(--navy);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s ease}
     .noPrint.action-buttons button:hover{background:var(--dark);transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.2)}
