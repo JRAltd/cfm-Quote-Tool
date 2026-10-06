@@ -41,12 +41,16 @@ CREATE INDEX IF NOT EXISTS idx_quotes_updated_at ON public.quotes(updated_at DES
 
 -- 3. Trigger to keep updated_at refreshed on every edit
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
     NEW.updated_at = timezone('utc'::text, now());
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS set_quotes_updated_at ON public.quotes;
 CREATE TRIGGER set_quotes_updated_at
@@ -58,30 +62,31 @@ CREATE TRIGGER set_quotes_updated_at
 ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
 
 -- 5. Strict RLS Policies - users can ONLY see, create, update, and delete their own quotes
+-- Using (select auth.uid()) optimizes query plans in Postgres
 DROP POLICY IF EXISTS "Users can view own quotes" ON public.quotes;
 CREATE POLICY "Users can view own quotes"
     ON public.quotes
     FOR SELECT
-    USING (auth.uid() = user_id);
+    USING ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can insert own quotes" ON public.quotes;
 CREATE POLICY "Users can insert own quotes"
     ON public.quotes
     FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update own quotes" ON public.quotes;
 CREATE POLICY "Users can update own quotes"
     ON public.quotes
     FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    USING ((select auth.uid()) = user_id)
+    WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete own quotes" ON public.quotes;
 CREATE POLICY "Users can delete own quotes"
     ON public.quotes
     FOR DELETE
-    USING (auth.uid() = user_id);
+    USING ((select auth.uid()) = user_id);
 
 -- Optional: Comments for documentation
 COMMENT ON TABLE public.quotes IS 'Quotes saved by CFM quote tool users';
