@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 supabase-config.local.js
+*Integration Info.txt
 
 # OS & Editor artifacts
 .DS_Store
