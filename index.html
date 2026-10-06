@@ -413,12 +413,26 @@
       body.cost-export table.items th:nth-child(7) { width: 15%; }
     }
   </style>
+  <link rel="stylesheet" href="supabase-ui.css">
   <script src="customers.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-client.js"></script>
+  <script src="supabase-ui.js"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <button type="button" class="noPrint theme-toggle" id="themeToggle" onclick="toggleDarkMode()" aria-pressed="false" style="float: right;">☾ Dark Mode</button>
+      <div class="noPrint top-toolbar">
+        <div class="top-toolbar-left" id="supabaseAuthStatus">
+          <!-- Populated by supabase-ui.js -->
+        </div>
+        <div class="top-toolbar-right">
+          <button type="button" class="btn-sm btn-primary" onclick="openQuotesModal()">📂 My Quotes</button>
+          <button type="button" class="btn-sm theme-toggle" id="themeToggle" onclick="toggleDarkMode()" aria-pressed="false">☾ Dark Mode</button>
+        </div>
+      </div>
+      <div class="quote-status-banner noPrint" id="quoteStatusBanner"></div>
       <div class="top">
         <div>
           <img src="logo-black.png" class="logo" alt="CFM Logo">
@@ -483,6 +497,8 @@
       </div>
       <div id="notesArea"></div>
       <div class="noPrint action-buttons">
+        <button type="button" id="saveQuoteBtn" onclick="onSaveQuoteClicked()" style="background: #16a34a; color: #fff;">💾 Save Quote</button>
+        <button type="button" id="myQuotesBtn" onclick="openQuotesModal()" style="background: #2563eb; color: #fff;">📂 My Quotes</button>
         <button type="button" onclick="addRow()">Add Line Item</button>
         <button type="button" onclick="addLineNote()">Add Line Item Note</button>
         <button type="button" onclick="addProjectSubtotal()">Add Project Subtotal</button>
@@ -761,19 +777,32 @@
       }
     }
     
-    function resetQuote(e) {
-      if (e) e.preventDefault();
-      if (!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
+    function resetQuoteDirect() {
       document.getElementById('tb').replaceChildren();
       document.getElementById('notesArea').replaceChildren();
       ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
-      
-      // Init grabs the current quote number (doesn't advance it) so it stays correct
+      if (window.CFM_SUPABASE) CFM_SUPABASE.setActiveQuoteId(null);
+      if (window.refreshAuthUI) refreshAuthUI();
       init();
       addRow();
       calc();
     }
+    window.resetQuoteDirect = resetQuoteDirect;
+
+    function resetQuote(e) {
+      if (e) e.preventDefault();
+      if (!confirm('Are you sure you want to clear the entire quote and start a new one?')) return;
+      resetQuoteDirect();
+    }
     
+    // Expose helpers for Supabase integration client
+    window.esc = esc;
+    window.actions = actions;
+    window.addRow = addRow;
+    window.calc = calc;
+    window.syncQuotedBy = syncQuotedBy;
+    window.setQuote = setQuote;
+
     window.onload = () => {
       let isDark = false;
       try { isDark = localStorage.getItem('cfm_dark_mode') === '1'; } catch(e) {}
@@ -790,7 +819,117 @@
           break;
         }
       }
+
+      if (window.CFM_SUPABASE) {
+        CFM_SUPABASE.initClient();
+        CFM_SUPABASE.checkSession().then(() => {
+          if (window.refreshAuthUI) refreshAuthUI();
+        });
+      }
     };
   </script>
+
+  <!-- Supabase Modals -->
+  <!-- 1. Auth Modal -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Cloud Account</h3>
+        <button type="button" class="modal-close" onclick="closeAuthModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button type="button" class="modal-tab-btn active" id="tabSignIn" onclick="setAuthTab('signin')">Sign In</button>
+          <button type="button" class="modal-tab-btn" id="tabSignUp" onclick="setAuthTab('signup')">Create Account</button>
+        </div>
+        <div id="authAlert" class="form-alert"></div>
+        <form onsubmit="handleAuthSubmit(event)">
+          <div class="form-group">
+            <label for="authEmail">Email Address</label>
+            <input type="email" id="authEmail" placeholder="you@company.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="authPassword">Password</label>
+            <input type="password" id="authPassword" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <p id="authHelpText" class="form-help">Sign in to access and edit your saved quotes across devices.</p>
+          <div class="modal-footer" style="padding: 16px 0 0 0; background: transparent; border: none;">
+            <button type="button" class="btn-sm" onclick="closeAuthModal()">Cancel</button>
+            <button type="submit" id="authSubmitBtn" class="btn-sm btn-primary">Log In</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Saved Quotes Modal -->
+  <div class="modal-backdrop" id="quotesModal">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <h3 class="modal-title">📂 Saved Quotes</h3>
+        <button type="button" class="modal-close" onclick="closeQuotesModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="quotes-search-box">
+          <input type="text" id="quotesSearchInput" placeholder="Search saved quotes by customer, quote #, account #, or PO..." oninput="onQuotesSearchInput()">
+        </div>
+        <div style="overflow-x: auto; max-height: 55vh;">
+          <table class="quotes-list-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Quote #</th>
+                <th style="width: 30%;">Customer</th>
+                <th style="width: 15%;">Quote Date</th>
+                <th style="width: 15%;">Total</th>
+                <th style="width: 12%;">Last Saved</th>
+                <th style="width: 13%; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="quotesListBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-sm" onclick="closeQuotesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Supabase Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙ Supabase Configuration</h3>
+        <button type="button" class="modal-close" onclick="closeSettingsModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="settingsAlert" class="form-alert"></div>
+        <form onsubmit="handleSaveSettings(event)">
+          <div class="form-group">
+            <label for="settingsUrl">Supabase Project URL</label>
+            <input type="url" id="settingsUrl" placeholder="https://xyzcompany.supabase.co" required>
+            <div class="form-help">Found in Supabase: Project Settings &rarr; API &rarr; Project URL</div>
+          </div>
+          <div class="form-group">
+            <label for="settingsKey">Supabase Anon Key (Public)</label>
+            <input type="password" id="settingsKey" placeholder="eyJhbGciOiJIUzI1NiIsIn..." required>
+            <div class="form-help">Found in Supabase: Project Settings &rarr; API &rarr; Project API keys (anon public)</div>
+          </div>
+          <div class="modal-footer" style="padding: 16px 0 0 0; background: transparent; border: none; justify-content: space-between;">
+            <button type="button" class="btn-sm btn-danger" onclick="handleClearSettings()">Disconnect</button>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn-sm" onclick="closeSettingsModal()">Cancel</button>
+              <button type="submit" class="btn-sm btn-success">Save &amp; Connect</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastNotice" class="toast-notice"></div>
 </body>
 </html>
