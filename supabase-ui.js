@@ -48,13 +48,20 @@
         <button type="button" class="btn-sm" onclick="openSettingsModal()" title="Supabase Settings">⚙</button>
       `;
     } else {
+      const profile = window.CFM_SUPABASE ? window.CFM_SUPABASE.getUserProfile(user) : { name: '', email: user.email };
+      const displayLabel = profile.name ? `${profile.name} (${user.email})` : user.email;
       authContainer.innerHTML = `
-        <span class="auth-status-pill connected" title="Logged in">
-          <span class="auth-status-dot active"></span> 👤 ${escapeHtml(user.email)}
+        <span class="auth-status-pill connected" title="Logged in as ${escapeHtml(displayLabel)}">
+          <span class="auth-status-dot active"></span> 👤 ${escapeHtml(displayLabel)}
         </span>
         <button type="button" class="btn-sm" onclick="handleSignOut()">Sign Out</button>
         <button type="button" class="btn-sm" onclick="openSettingsModal()" title="Supabase Settings">⚙</button>
       `;
+      const fillBtn = document.getElementById('btnFillMyInfo');
+      if (fillBtn) fillBtn.style.display = 'inline-block';
+      if (typeof window.applyUserToQuotedBy === 'function') {
+        window.applyUserToQuotedBy(false);
+      }
     }
 
     refreshActiveQuoteBanner();
@@ -94,9 +101,15 @@
     const alert = document.getElementById('authAlert');
     alert.className = 'form-alert';
     alert.innerText = '';
+    const fn = document.getElementById('authFullName');
+    if (fn) fn.value = '';
     setAuthTab(tab);
     modal.classList.add('show');
-    document.getElementById('authEmail').focus();
+    if (tab === 'signup' && fn) {
+      fn.focus();
+    } else {
+      document.getElementById('authEmail')?.focus();
+    }
   }
 
   function closeAuthModal() {
@@ -109,15 +122,18 @@
     const signupTab = document.getElementById('tabSignUp');
     const submitBtn = document.getElementById('authSubmitBtn');
     const helpText = document.getElementById('authHelpText');
+    const fnGroup = document.getElementById('fullNameGroup');
 
     if (tab === 'signin') {
       signinTab?.classList.add('active');
       signupTab?.classList.remove('active');
+      if (fnGroup) fnGroup.style.display = 'none';
       if (submitBtn) submitBtn.innerText = 'Log In';
       if (helpText) helpText.innerText = 'Sign in to access and edit your saved quotes across devices.';
     } else {
       signinTab?.classList.remove('active');
       signupTab?.classList.add('active');
+      if (fnGroup) fnGroup.style.display = 'block';
       if (submitBtn) submitBtn.innerText = 'Create Account';
       if (helpText) helpText.innerText = 'Create a secure account to save quotes and manage history.';
     }
@@ -145,11 +161,15 @@
         showToast('Signed in successfully!', 'success');
         closeAuthModal();
       } else {
-        await CFM_SUPABASE.signUp(email, password);
+        const fullName = (document.getElementById('authFullName')?.value || '').trim();
+        await CFM_SUPABASE.signUp(email, password, fullName);
         showToast('Account created! You are now logged in.', 'success');
         closeAuthModal();
       }
       refreshAuthUI();
+      if (typeof window.applyUserToQuotedBy === 'function') {
+        window.applyUserToQuotedBy(true);
+      }
     } catch (err) {
       alert.className = 'form-alert error';
       alert.innerText = err.message || 'Authentication failed. Please verify credentials.';

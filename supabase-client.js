@@ -49,9 +49,24 @@
     }
   }
 
-  async function signUp(email, password) {
+  function getUserProfile(user) {
+    if (!user) return { name: '', email: '' };
+    const email = user.email || '';
+    let name = user.user_metadata?.full_name || user.user_metadata?.name || '';
+    if (!name && email) {
+      const localPart = email.split('@')[0];
+      name = localPart
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+        .trim();
+    }
+    return { name, email };
+  }
+
+  async function signUp(email, password, fullName = '') {
     if (!supabase) throw new Error('Supabase is not configured yet. Please enter your project URL & Key.');
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const options = fullName ? { data: { full_name: fullName.trim() } } : undefined;
+    const { data, error } = await supabase.auth.signUp({ email, password, options });
     if (error) throw error;
     currentUser = data.user;
     return data;
@@ -85,10 +100,16 @@
     const contactPhone = document.getElementById('contactPhone').value || '';
     const freight = parseFloat(document.getElementById('freight').value) || 0;
 
-    const qbSelect = document.getElementById('quotedBy');
-    const isManual = qbSelect.value === 'manual';
-    const quotedBy = isManual ? (document.getElementById('manualQuotedBy').value || '') : (qbSelect.value || '');
-    const quotedByEmail = document.getElementById('quotedByEmail').value || '';
+    const quotedByNameEl = document.getElementById('quotedByName');
+    const quotedBySelectEl = document.getElementById('quotedBy');
+    let quotedBy = '';
+    if (quotedByNameEl) {
+      quotedBy = quotedByNameEl.value.trim();
+    } else if (quotedBySelectEl) {
+      const isManual = quotedBySelectEl.value === 'manual';
+      quotedBy = isManual ? (document.getElementById('manualQuotedBy')?.value || '') : (quotedBySelectEl.value || '');
+    }
+    const quotedByEmail = (document.getElementById('quotedByEmail')?.value || '').trim();
 
     // Extract items from table body
     const tb = document.getElementById('tb');
@@ -172,24 +193,30 @@
     document.getElementById('freight').value = (quote.freight !== undefined && quote.freight !== null) ? quote.freight : '';
 
     // Populate Quoted By
-    const qbSelect = document.getElementById('quotedBy');
-    const manualInput = document.getElementById('manualQuotedBy');
+    const nameInput = document.getElementById('quotedByName');
     const emailInput = document.getElementById('quotedByEmail');
-    let matchedOption = false;
-    for (let i = 0; i < qbSelect.options.length; i++) {
-      if (qbSelect.options[i].value === quote.quoted_by) {
-        qbSelect.selectedIndex = i;
-        matchedOption = true;
-        break;
+    if (nameInput) {
+      nameInput.value = quote.quoted_by || '';
+    }
+    if (emailInput) {
+      emailInput.value = quote.quoted_by_email || '';
+    }
+    const qbSelect = document.getElementById('quotedBy');
+    if (qbSelect) {
+      let matchedOption = false;
+      for (let i = 0; i < qbSelect.options.length; i++) {
+        if (qbSelect.options[i].value === quote.quoted_by) {
+          qbSelect.selectedIndex = i;
+          matchedOption = true;
+          break;
+        }
+      }
+      if (!matchedOption && quote.quoted_by) {
+        qbSelect.value = 'manual';
+        const mqb = document.getElementById('manualQuotedBy');
+        if (mqb) { mqb.value = quote.quoted_by; mqb.style.display = 'inline-block'; }
       }
     }
-    if (!matchedOption && quote.quoted_by) {
-      qbSelect.value = 'manual';
-      manualInput.value = quote.quoted_by;
-      manualInput.style.display = 'inline-block';
-      emailInput.readOnly = false;
-    }
-    emailInput.value = quote.quoted_by_email || '';
     if (typeof window.syncQuotedBy === 'function') {
       window.syncQuotedBy();
     }
@@ -344,6 +371,7 @@
     updateConfig,
     clearConfig,
     checkSession,
+    getUserProfile,
     signUp,
     signIn,
     signOut,

@@ -516,19 +516,16 @@
       <div class="disclaimer">
         <div class="line1"><strong>Pricing excludes applicable taxes and shipping costs unless otherwise noted.</strong></div>
         <div class="line2">Prices subject to change without notice. Quoted prices valid for 30 days unless otherwise noted.</div>
+        <div class="line3" id="quotedByPrintLine" style="margin-top: 8px;">
+          Quoted by: <strong id="quotedByNamePrint">—</strong> <span id="quotedByEmailPrintWrap">(<a id="quotedByEmailPrint" style="color: inherit; text-decoration: none;">—</a>)</span>
+        </div>
       </div>
-      <div class="quotedBy noPrint">
-        Quoted by: 
-        <select id="quotedBy" onchange="syncQuotedBy()">
-          <option value="">Select name</option>
-          <option value="Jeremy Allen" data-email="j.allen@cfmkc.com">Jeremy Allen</option>
-          <option value="David Smith" data-email="d.smith@cfmkc.com">David Smith</option>
-          <option value="Sarah Johnson" data-email="s.johnson@cfmkc.com">Sarah Johnson</option>
-          <option value="manual">Manual Entry</option>
-        </select>
-        <span class="quotedBy-display" id="quotedByDisplay"></span> 
-        <input id="manualQuotedBy" type="text" style="display:none;width:150px" oninput="syncQuotedBy()"> 
-        <input id="quotedByEmail" type="email" placeholder="Email (optional)" style="width:200px" readonly>
+      <div class="quotedBy noPrint" style="margin-top: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="font-weight: 700; font-size: 13px;">Quoted by:</span>
+        <input id="quotedByName" type="text" placeholder="Representative Name" style="width: 200px;" oninput="syncQuotedBy()">
+        <span style="font-weight: 700; font-size: 13px;">Email:</span>
+        <input id="quotedByEmail" type="email" placeholder="Email" style="width: 240px;" oninput="syncQuotedBy()">
+        <button type="button" class="btn-sm" id="btnFillMyInfo" onclick="applyUserToQuotedBy(true)" title="Auto-fill with your Supabase login info" style="display: none;">Use My Login Info</button>
       </div>
     </div>
   </div>
@@ -760,29 +757,53 @@
     }
     
     function syncQuotedBy() {
-      const qb = document.getElementById('quotedBy');
-      const manual = qb.value === 'manual';
-      const mqb = document.getElementById('manualQuotedBy');
-      const qbd = document.getElementById('quotedByDisplay');
-      const qbe = document.getElementById('quotedByEmail');
-      mqb.style.display = manual ? 'inline-block' : 'none';
-      qbe.readOnly = !manual;
-      if (manual) {
-        qbd.innerText = mqb.value;
-        qbe.value = '';
-      } else {
-        const opt = qb.options[qb.selectedIndex];
-        qbd.innerText = opt.value;
-        qbe.value = opt.getAttribute('data-email') || '';
+      const name = (document.getElementById('quotedByName')?.value || '').trim();
+      const email = (document.getElementById('quotedByEmail')?.value || '').trim();
+      
+      const namePrint = document.getElementById('quotedByNamePrint');
+      const emailPrint = document.getElementById('quotedByEmailPrint');
+      const emailWrap = document.getElementById('quotedByEmailPrintWrap');
+      const printLine = document.getElementById('quotedByPrintLine');
+      
+      if (namePrint) namePrint.innerText = name || '—';
+      if (emailPrint) {
+        emailPrint.innerText = email || '';
+        emailPrint.href = email ? 'mailto:' + email : '#';
+      }
+      if (emailWrap) {
+        emailWrap.style.display = email ? 'inline' : 'none';
+      }
+      if (printLine) {
+        printLine.style.display = (name || email) ? 'block' : 'none';
       }
     }
-    
+
+    function applyUserToQuotedBy(force = false) {
+      if (!window.CFM_SUPABASE) return;
+      const user = CFM_SUPABASE.getCurrentUser();
+      if (!user) return;
+      const { name, email } = CFM_SUPABASE.getUserProfile(user);
+      
+      const nameInput = document.getElementById('quotedByName');
+      const emailInput = document.getElementById('quotedByEmail');
+      
+      if (nameInput && (!nameInput.value || force)) {
+        nameInput.value = name;
+      }
+      if (emailInput && (!emailInput.value || force)) {
+        emailInput.value = email;
+      }
+      syncQuotedBy();
+    }
+    window.applyUserToQuotedBy = applyUserToQuotedBy;
+
     function resetQuoteDirect() {
       document.getElementById('tb').replaceChildren();
       document.getElementById('notesArea').replaceChildren();
       ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
       if (window.CFM_SUPABASE) CFM_SUPABASE.setActiveQuoteId(null);
       if (window.refreshAuthUI) refreshAuthUI();
+      if (window.applyUserToQuotedBy) applyUserToQuotedBy(true);
       init();
       addRow();
       calc();
@@ -810,20 +831,13 @@
       
       init();
       addRow();
-      
-      const qb = document.getElementById('quotedBy');
-      for (let i = 0; i < qb.options.length; i++) {
-        if (qb.options[i].value === 'Jeremy Allen') {
-          qb.selectedIndex = i;
-          syncQuotedBy();
-          break;
-        }
-      }
+      syncQuotedBy();
 
       if (window.CFM_SUPABASE) {
         CFM_SUPABASE.initClient();
         CFM_SUPABASE.checkSession().then(() => {
           if (window.refreshAuthUI) refreshAuthUI();
+          if (window.applyUserToQuotedBy) applyUserToQuotedBy(false);
         });
       }
     };
@@ -844,6 +858,10 @@
         </div>
         <div id="authAlert" class="form-alert"></div>
         <form onsubmit="handleAuthSubmit(event)">
+          <div class="form-group" id="fullNameGroup" style="display: none;">
+            <label for="authFullName">Full Name</label>
+            <input type="text" id="authFullName" placeholder="e.g. Jeremy Allen" autocomplete="name">
+          </div>
           <div class="form-group">
             <label for="authEmail">Email Address</label>
             <input type="email" id="authEmail" placeholder="you@company.com" required autocomplete="email">
