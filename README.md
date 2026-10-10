@@ -6,7 +6,7 @@ A web-based quote generation and management tool for CFM Distributors, featuring
 
 ## Features
 
-- **Quote Generation**: Automatically formats quotes with lead times, part numbers, descriptions, costs, markups, and totals.
+- **Quote Generation**: Automatically formats quotes with lead times, part numbers, descriptions, costs, markups, individual unit prices, and line totals.
 - **Customer Lookup**: Fast instant search by customer name, city, or account number.
 - **Section Subtotals & Notes**: Add project breakdowns and customizable line/general notes.
 - **Clean PDF & Cost Page Export**: Formatted for print or clean PDF export without browser headers/footers.

@@ -122,7 +122,8 @@
         const desc = r.cells[3]?.querySelector('.edit-box')?.innerText.trim() || '';
         const cost = parseFloat(r.cells[4]?.querySelector('input')?.value) || 0;
         const markup = parseFloat(r.cells[5]?.querySelector('input')?.value) || 0;
-        const total = r.cells[6]?.querySelector('span')?.innerText.trim() || '$0.00';
+        const price = r.cells[6]?.querySelector('span')?.innerText.trim() || '$0.00';
+        const total = r.cells[7]?.querySelector('span')?.innerText.trim() || '$0.00';
         items.push({
           type: 'item',
           leadTime,
@@ -131,6 +132,7 @@
           description: desc,
           cost,
           markup,
+          price,
           total
         });
       } else if (r.classList.contains('line-note')) {
@@ -141,7 +143,7 @@
         });
       } else if (r.classList.contains('project-subtotal')) {
         const label = r.cells[3]?.querySelector('.edit-box')?.innerText.trim() || '';
-        const amount = r.cells[6]?.querySelector('span')?.innerText.trim() || '$0.00';
+        const amount = (r.querySelector('.section-amount span') || r.cells[7]?.querySelector('span'))?.innerText.trim() || '$0.00';
         items.push({
           type: 'subtotal',
           label,
@@ -233,15 +235,15 @@
         if (item.type === 'item') {
           const r = tb.insertRow();
           r.className = 'item-row';
-          r.innerHTML = `<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time">${window.esc ? window.esc(item.leadTime || '') : (item.leadTime || '')}</div></td><td class="qty-col"><input type="number" value="${item.qty !== undefined ? item.qty : 1}" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #">${window.esc ? window.esc(item.model || '') : (item.model || '')}</div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description">${window.esc ? window.esc(item.description || '') : (item.description || '')}</div></td><td class="internal right"><input type="number" value="${item.cost !== undefined ? item.cost : 0}" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="${item.markup !== undefined ? item.markup : 0}" step="0.01" oninput="calc()"></td><td class="right"><span>$0.00</span></td>` + (typeof window.actions === 'function' ? window.actions() : '');
+          r.innerHTML = `<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time">${window.esc ? window.esc(item.leadTime || '') : (item.leadTime || '')}</div></td><td class="qty-col"><input type="number" value="${item.qty !== undefined ? item.qty : 1}" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #">${window.esc ? window.esc(item.model || '') : (item.model || '')}</div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description">${window.esc ? window.esc(item.description || '') : (item.description || '')}</div></td><td class="internal right"><input type="number" value="${item.cost !== undefined ? item.cost : 0}" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="${item.markup !== undefined ? item.markup : 0}" step="0.01" oninput="calc()"></td><td class="right price-col"><span>${window.esc ? window.esc(item.price || '$0.00') : (item.price || '$0.00')}</span></td><td class="right total-col"><span>${window.esc ? window.esc(item.total || '$0.00') : (item.total || '$0.00')}</span></td>` + (typeof window.actions === 'function' ? window.actions() : '');
         } else if (item.type === 'note') {
           const r = tb.insertRow();
           r.className = 'line-note';
-          r.innerHTML = `<td></td><td></td><td></td><td><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note">${window.esc ? window.esc(item.text || '') : (item.text || '')}</div></td><td class="internal"></td><td class="internal"></td><td></td>` + (typeof window.actions === 'function' ? window.actions() : '');
+          r.innerHTML = `<td></td><td></td><td></td><td><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note">${window.esc ? window.esc(item.text || '') : (item.text || '')}</div></td><td class="internal"></td><td class="internal"></td><td></td><td></td>` + (typeof window.actions === 'function' ? window.actions() : '');
         } else if (item.type === 'subtotal') {
           const r = tb.insertRow();
           r.className = 'project-subtotal';
-          r.innerHTML = `<td></td><td></td><td class="right" style="padding-right:15px; font-weight:bold;">Subtotal:</td><td><div class="edit-box" contenteditable="true" data-placeholder="Section name (optional)">${window.esc ? window.esc(item.label || '') : (item.label || '')}</div></td><td class="internal"></td><td class="internal"></td><td class="right section-amount"><span>$0.00</span></td>` + (typeof window.actions === 'function' ? window.actions() : '');
+          r.innerHTML = `<td></td><td></td><td class="right" style="padding-right:15px; font-weight:bold;">Subtotal:</td><td><div class="edit-box" contenteditable="true" data-placeholder="Section name (optional)">${window.esc ? window.esc(item.label || '') : (item.label || '')}</div></td><td class="internal"></td><td class="internal"></td><td></td><td class="right section-amount"><span>${window.esc ? window.esc(item.amount || '$0.00') : (item.amount || '$0.00')}</span></td>` + (typeof window.actions === 'function' ? window.actions() : '');
         }
       });
     }

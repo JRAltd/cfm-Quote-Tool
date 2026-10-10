@@ -362,11 +362,12 @@
       
       .edit-box { border: none; padding: 0; }
       
-      table.items th:nth-child(1) { width: 15%; }
-      table.items th:nth-child(2) { width: 8%; }
-      table.items th:nth-child(3) { width: 22%; }
-      table.items th:nth-child(4) { width: 40%; }
-      table.items th:nth-child(7) { width: 15%; }
+      table.items th:nth-child(1) { width: 12%; }
+      table.items th:nth-child(2) { width: 6%; }
+      table.items th:nth-child(3) { width: 20%; }
+      table.items th:nth-child(4) { width: 38%; }
+      table.items th:nth-child(7) { width: 12%; }
+      table.items th:nth-child(8) { width: 12%; }
       table.items th:nth-child(5), table.items th:nth-child(6) { display: none; }
       
       .subtotal-bar { 
@@ -406,11 +407,14 @@
       body.cost-export table.items td:nth-child(5), body.cost-export table.items td:nth-child(6) { display: table-cell !important; }
       body.cost-export table.items th:nth-child(5), body.cost-export table.items th:nth-child(6) { display: table-cell !important; }
       
-      body.cost-export table.items th:nth-child(1) { width: 12%; }
-      body.cost-export table.items th:nth-child(3) { width: 15%; }
-      body.cost-export table.items th:nth-child(4) { width: 28%; }
-      body.cost-export table.items th:nth-child(5), body.cost-export table.items th:nth-child(6) { width: 10%; }
-      body.cost-export table.items th:nth-child(7) { width: 15%; }
+      body.cost-export table.items th:nth-child(1) { width: 10%; }
+      body.cost-export table.items th:nth-child(2) { width: 6%; }
+      body.cost-export table.items th:nth-child(3) { width: 14%; }
+      body.cost-export table.items th:nth-child(4) { width: 26%; }
+      body.cost-export table.items th:nth-child(5) { width: 11%; }
+      body.cost-export table.items th:nth-child(6) { width: 9%; }
+      body.cost-export table.items th:nth-child(7) { width: 12%; }
+      body.cost-export table.items th:nth-child(8) { width: 12%; }
     }
   </style>
   <link rel="stylesheet" href="supabase-ui.css">
@@ -488,6 +492,7 @@
               <th>Item Name/Description</th>
               <th class="internal right">Cost</th>
               <th class="internal right">Markup (%)</th>
+              <th class="right">Price</th>
               <th class="right">Total</th>
               <th class="noPrint">Actions</th>
             </tr>
@@ -601,21 +606,21 @@
       const tb = document.getElementById('tb');
       const r = tb.insertRow();
       r.className = 'item-row';
-      r.innerHTML = '<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time"></div></td><td class="qty-col"><input type="number" value="1" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description"></div></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="right"><span>$0.00</span></td>' + actions();
+      r.innerHTML = '<td><div class="edit-box" contenteditable="true" data-placeholder="Lead time"></div></td><td class="qty-col"><input type="number" value="1" min="0" oninput="calc()"></td><td><div class="edit-box" contenteditable="true" data-placeholder="Model/Part #"></div></td><td><div class="edit-box" contenteditable="true" data-placeholder="Item name/description"></div></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="internal right"><input type="number" value="0" step="0.01" oninput="calc()"></td><td class="right price-col"><span>$0.00</span></td><td class="right total-col"><span>$0.00</span></td>' + actions();
     }
     
     function addLineNote() {
       const tb = document.getElementById('tb');
       const r = tb.insertRow();
       r.className = 'line-note';
-      r.innerHTML = '<td></td><td></td><td></td><td><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td><td class="internal"></td><td class="internal"></td><td></td>' + actions();
+      r.innerHTML = '<td></td><td></td><td></td><td><div class="note-text edit-box" contenteditable="true" data-placeholder="Line item note"></div></td><td class="internal"></td><td class="internal"></td><td></td><td></td>' + actions();
     }
     
     function addProjectSubtotal() {
       const tb = document.getElementById('tb');
       const r = tb.insertRow();
       r.className = 'project-subtotal';
-      r.innerHTML = '<td></td><td></td><td class="right" style="padding-right:15px; font-weight:bold;">Subtotal:</td><td><div class="edit-box" contenteditable="true" data-placeholder="Section name (optional)"></div></td><td class="internal"></td><td class="internal"></td><td class="right section-amount"><span>$0.00</span></td>' + actions();
+      r.innerHTML = '<td></td><td></td><td class="right" style="padding-right:15px; font-weight:bold;">Subtotal:</td><td><div class="edit-box" contenteditable="true" data-placeholder="Section name (optional)"></div></td><td class="internal"></td><td class="internal"></td><td></td><td class="right section-amount"><span>$0.00</span></td>' + actions();
       calc(); 
     }
     
@@ -643,11 +648,13 @@
           
           const s = q * unitPrice; 
           
-          r.cells[6].children[0].innerText = money(s);
+          r.cells[6].children[0].innerText = money(unitPrice);
+          r.cells[7].children[0].innerText = money(s);
           total += s;
           section += s;
         } else if (r.classList.contains('project-subtotal')) {
-          r.cells[6].children[0].innerText = money(section);
+          const subtotalSpan = r.querySelector('.section-amount span') || r.cells[7]?.children[0];
+          if (subtotalSpan) subtotalSpan.innerText = money(section);
           section = 0;
         }
       });
