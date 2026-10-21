@@ -1,5 +1,5 @@
 // ==============================================================================
-// CFM Quote Tool - Supabase UI Controller
+// CFM Quote Tool - Firebase UI Controller
 // ==============================================================================
 
 (function() {
@@ -26,36 +26,38 @@
 
   // Update Top Auth Bar & Banner
   function refreshAuthUI() {
-    const isConfigured = window.CFM_SUPABASE && window.CFM_SUPABASE.isConfigured();
-    const user = window.CFM_SUPABASE ? window.CFM_SUPABASE.getCurrentUser() : null;
+    const isConfigured = window.CFM_FIREBASE && window.CFM_FIREBASE.isConfigured();
+    const user = window.CFM_FIREBASE ? window.CFM_FIREBASE.getCurrentUser() : null;
 
-    const authContainer = document.getElementById('supabaseAuthStatus');
+    const authContainer = document.getElementById('firebaseAuthStatus');
     if (!authContainer) return;
 
     if (!isConfigured) {
       authContainer.innerHTML = `
-        <span class="auth-status-pill" title="Supabase database not connected yet">
+        <span class="auth-status-pill" title="Firebase database not connected yet">
           <span class="auth-status-dot"></span> Offline Mode
         </span>
-        <button type="button" class="btn-sm btn-primary" onclick="openSettingsModal()">⚙ Connect Supabase</button>
+        <button type="button" class="btn-sm btn-primary" onclick="openSettingsModal()">⚙ Connect Firebase</button>
       `;
     } else if (!user) {
       authContainer.innerHTML = `
-        <span class="auth-status-pill connected" title="Connected to Supabase">
-          <span class="auth-status-dot active"></span> Supabase Ready
+        <span class="auth-status-pill connected" title="Connected to Firebase">
+          <span class="auth-status-dot active"></span> Firebase Ready
         </span>
         <button type="button" class="btn-sm btn-primary" onclick="openAuthModal('signin')">Log In / Sign Up</button>
-        <button type="button" class="btn-sm" onclick="openSettingsModal()" title="Supabase Settings">⚙</button>
+        <button type="button" class="btn-sm" onclick="openSettingsModal()" title="Firebase Settings">⚙</button>
       `;
+      const fillBtn = document.getElementById('btnFillMyInfo');
+      if (fillBtn) fillBtn.style.display = 'none';
     } else {
-      const profile = window.CFM_SUPABASE ? window.CFM_SUPABASE.getUserProfile(user) : { name: '', email: user.email };
+      const profile = window.CFM_FIREBASE ? window.CFM_FIREBASE.getUserProfile(user) : { name: '', email: user.email };
       const displayLabel = profile.name ? `${profile.name} (${user.email})` : user.email;
       authContainer.innerHTML = `
         <span class="auth-status-pill connected" title="Logged in as ${escapeHtml(displayLabel)}">
           <span class="auth-status-dot active"></span> 👤 ${escapeHtml(displayLabel)}
         </span>
         <button type="button" class="btn-sm" onclick="handleSignOut()">Sign Out</button>
-        <button type="button" class="btn-sm" onclick="openSettingsModal()" title="Supabase Settings">⚙</button>
+        <button type="button" class="btn-sm" onclick="openSettingsModal()" title="Firebase Settings">⚙</button>
       `;
       const fillBtn = document.getElementById('btnFillMyInfo');
       if (fillBtn) fillBtn.style.display = 'inline-block';
@@ -69,7 +71,7 @@
 
   function refreshActiveQuoteBanner() {
     const banner = document.getElementById('quoteStatusBanner');
-    const activeId = window.CFM_SUPABASE ? window.CFM_SUPABASE.getActiveQuoteId() : null;
+    const activeId = window.CFM_FIREBASE ? window.CFM_FIREBASE.getActiveQuoteId() : null;
     if (!banner) return;
 
     if (activeId) {
@@ -81,7 +83,7 @@
           <span style="font-size:12px; margin-left: 8px; color: var(--muted);">(Changes will update this saved quote)</span>
         </div>
         <div>
-          <button type="button" class="btn-sm" onclick="CFM_SUPABASE.startNewQuote()">+ Start New Quote</button>
+          <button type="button" class="btn-sm" onclick="CFM_FIREBASE.startNewQuote()">+ Start New Quote</button>
         </div>
       `;
       banner.classList.add('show');
@@ -129,13 +131,13 @@
       signupTab?.classList.remove('active');
       if (fnGroup) fnGroup.style.display = 'none';
       if (submitBtn) submitBtn.innerText = 'Log In';
-      if (helpText) helpText.innerText = 'Sign in to access and edit your saved quotes across devices.';
+      if (helpText) helpText.innerText = 'Sign in with Firebase Authentication to access and edit your saved quotes across devices.';
     } else {
       signinTab?.classList.remove('active');
       signupTab?.classList.add('active');
       if (fnGroup) fnGroup.style.display = 'block';
       if (submitBtn) submitBtn.innerText = 'Create Account';
-      if (helpText) helpText.innerText = 'Create a secure account to save quotes and manage history.';
+      if (helpText) helpText.innerText = 'Create a secure Firebase account to save quotes and manage your quote history.';
     }
   }
 
@@ -157,12 +159,12 @@
       submitBtn.innerText = 'Processing...';
 
       if (activeTab === 'signin') {
-        await CFM_SUPABASE.signIn(email, password);
+        await CFM_FIREBASE.signIn(email, password);
         showToast('Signed in successfully!', 'success');
         closeAuthModal();
       } else {
         const fullName = (document.getElementById('authFullName')?.value || '').trim();
-        await CFM_SUPABASE.signUp(email, password, fullName);
+        await CFM_FIREBASE.signUp(email, password, fullName);
         showToast('Account created! You are now logged in.', 'success');
         closeAuthModal();
       }
@@ -182,7 +184,7 @@
   async function handleSignOut() {
     if (confirm('Are you sure you want to sign out?')) {
       try {
-        await CFM_SUPABASE.signOut();
+        await CFM_FIREBASE.signOut();
         showToast('Signed out successfully.');
         refreshAuthUI();
       } catch (err) {
@@ -194,9 +196,15 @@
   // --- Settings Modal ---
   function openSettingsModal() {
     const modal = document.getElementById('settingsModal');
-    const { url, anonKey } = CFM_SUPABASE.getConfig();
-    document.getElementById('settingsUrl').value = url || '';
-    document.getElementById('settingsKey').value = anonKey || '';
+    const config = CFM_FIREBASE.getConfig();
+    const snippetEl = document.getElementById('settingsSnippet');
+    if (snippetEl) snippetEl.value = '';
+
+    document.getElementById('settingsProjectId').value = config.projectId || '';
+    document.getElementById('settingsApiKey').value = config.apiKey || '';
+    document.getElementById('settingsAuthDomain').value = config.authDomain || '';
+    document.getElementById('settingsAppId').value = config.appId || '';
+
     const alert = document.getElementById('settingsAlert');
     alert.className = 'form-alert';
     alert.innerText = '';
@@ -207,35 +215,62 @@
     document.getElementById('settingsModal')?.classList.remove('show');
   }
 
+  function onSettingsSnippetInput() {
+    const raw = document.getElementById('settingsSnippet')?.value || '';
+    const parsed = CFM_FIREBASE.parseConfigSnippet(raw);
+    if (!parsed) return;
+
+    if (parsed.projectId) document.getElementById('settingsProjectId').value = parsed.projectId;
+    if (parsed.apiKey) document.getElementById('settingsApiKey').value = parsed.apiKey;
+    if (parsed.authDomain) document.getElementById('settingsAuthDomain').value = parsed.authDomain;
+    if (parsed.appId) document.getElementById('settingsAppId').value = parsed.appId;
+  }
+
   function handleSaveSettings(e) {
     if (e) e.preventDefault();
-    const url = document.getElementById('settingsUrl').value.trim();
-    const anonKey = document.getElementById('settingsKey').value.trim();
+    const snippetRaw = document.getElementById('settingsSnippet')?.value || '';
+    const parsed = CFM_FIREBASE.parseConfigSnippet(snippetRaw) || {};
+
+    const projectId = (document.getElementById('settingsProjectId').value || parsed.projectId || '').trim();
+    const apiKey = (document.getElementById('settingsApiKey').value || parsed.apiKey || '').trim();
+    const authDomain = (document.getElementById('settingsAuthDomain').value || parsed.authDomain || '').trim();
+    const appId = (document.getElementById('settingsAppId').value || parsed.appId || '').trim();
     const alert = document.getElementById('settingsAlert');
 
-    if (!url || !anonKey) {
+    if (!projectId || !apiKey) {
       alert.className = 'form-alert error';
-      alert.innerText = 'Please provide both your Supabase URL and Anon Key.';
+      alert.innerText = 'Please provide at least your Firebase Project ID and Web API Key (or paste your firebaseConfig snippet).';
       return;
     }
 
     try {
-      CFM_SUPABASE.updateConfig(url, anonKey);
-      showToast('Supabase settings saved and initialized!', 'success');
+      CFM_FIREBASE.updateConfig({
+        projectId,
+        apiKey,
+        authDomain: authDomain || `${projectId}.firebaseapp.com`,
+        storageBucket: parsed.storageBucket || `${projectId}.appspot.com`,
+        messagingSenderId: parsed.messagingSenderId || '',
+        appId
+      });
+      showToast('Firebase settings saved and initialized!', 'success');
       closeSettingsModal();
       refreshAuthUI();
     } catch (err) {
       alert.className = 'form-alert error';
-      alert.innerText = 'Failed to initialize: ' + err.message;
+      alert.innerText = 'Failed to initialize Firebase: ' + err.message;
     }
   }
 
   function handleClearSettings() {
-    if (confirm('Clear Supabase configuration and disconnect?')) {
-      CFM_SUPABASE.clearConfig();
-      document.getElementById('settingsUrl').value = '';
-      document.getElementById('settingsKey').value = '';
-      showToast('Supabase configuration cleared.');
+    if (confirm('Clear Firebase configuration and disconnect?')) {
+      CFM_FIREBASE.clearConfig();
+      document.getElementById('settingsProjectId').value = '';
+      document.getElementById('settingsApiKey').value = '';
+      document.getElementById('settingsAuthDomain').value = '';
+      document.getElementById('settingsAppId').value = '';
+      const snippetEl = document.getElementById('settingsSnippet');
+      if (snippetEl) snippetEl.value = '';
+      showToast('Firebase configuration cleared.');
       closeSettingsModal();
       refreshAuthUI();
     }
@@ -243,13 +278,13 @@
 
   // --- Save Quote Action ---
   async function handleSaveQuote() {
-    if (!CFM_SUPABASE.isConfigured()) {
-      showToast('Please connect Supabase first to save quotes.', 'error');
+    if (!CFM_FIREBASE.isConfigured()) {
+      showToast('Please connect Firebase first to save quotes.', 'error');
       openSettingsModal();
       return;
     }
 
-    const user = CFM_SUPABASE.getCurrentUser();
+    const user = CFM_FIREBASE.getCurrentUser();
     if (!user) {
       showToast('Please log in to save quotes to your account.', 'error');
       openAuthModal('signin');
@@ -265,9 +300,9 @@
         saveBtn.innerHTML = '⏳ Saving...';
       }
 
-      const res = await CFM_SUPABASE.saveQuote();
+      const res = await CFM_FIREBASE.saveQuote();
       if (res.action === 'created') {
-        showToast(`Quote #${res.quote.quote_number} saved to your cloud account!`, 'success');
+        showToast(`Quote #${res.quote.quote_number} saved to Cloud Firestore!`, 'success');
       } else {
         showToast(`Quote #${res.quote.quote_number} updated successfully!`, 'success');
       }
@@ -285,13 +320,13 @@
 
   // --- Quotes Modal ---
   async function openQuotesModal() {
-    if (!CFM_SUPABASE.isConfigured()) {
-      showToast('Please connect Supabase first to view saved quotes.', 'error');
+    if (!CFM_FIREBASE.isConfigured()) {
+      showToast('Please connect Firebase first to view saved quotes.', 'error');
       openSettingsModal();
       return;
     }
 
-    const user = CFM_SUPABASE.getCurrentUser();
+    const user = CFM_FIREBASE.getCurrentUser();
     if (!user) {
       showToast('Please log in to view your quotes.', 'error');
       openAuthModal('signin');
@@ -315,7 +350,7 @@
     listBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--muted);">Loading your quotes...</td></tr>';
 
     try {
-      const quotes = await CFM_SUPABASE.listQuotes(searchTerm);
+      const quotes = await CFM_FIREBASE.listQuotes(searchTerm);
 
       if (!quotes || quotes.length === 0) {
         listBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--muted); font-size:14px;">
@@ -333,16 +368,16 @@
 
         return `
           <tr>
-            <td><strong>#${escapeHtml(q.quote_number)}</strong></td>
+            <td><strong>#${escapeHtml(String(q.quote_number))}</strong></td>
             <td>${custDisplay} ${acctDisplay}</td>
             <td>${escapeHtml(dateStr)}</td>
             <td style="font-weight:700; color:var(--navy);">${formattedTotal}</td>
             <td style="font-size:12px; color:var(--muted);">${updatedStr}</td>
             <td>
               <div class="quotes-actions-cell">
-                <button type="button" class="btn-sm btn-primary" onclick="handleLoadQuote('${q.id}')" title="Load & Edit">Edit</button>
-                <button type="button" class="btn-sm" onclick="handleDuplicateQuote('${q.id}')" title="Duplicate as new quote">Duplicate</button>
-                <button type="button" class="btn-sm btn-danger" onclick="handleDeleteQuote('${q.id}', '${escapeHtml(q.quote_number)}')" title="Delete Quote">✕</button>
+                <button type="button" class="btn-sm btn-primary" onclick="handleLoadQuote('${escapeHtml(q.id)}')" title="Load & Edit">Edit</button>
+                <button type="button" class="btn-sm" onclick="handleDuplicateQuote('${escapeHtml(q.id)}')" title="Duplicate as new quote">Duplicate</button>
+                <button type="button" class="btn-sm btn-danger" onclick="handleDeleteQuote('${escapeHtml(q.id)}', '${escapeHtml(String(q.quote_number))}')" title="Delete Quote">✕</button>
               </div>
             </td>
           </tr>
@@ -358,13 +393,13 @@
     searchDebounceTimeout = setTimeout(() => {
       const q = document.getElementById('quotesSearchInput')?.value || '';
       loadQuotesList(q);
-    }, 250);
+    }, 200);
   }
 
   async function handleLoadQuote(id) {
     try {
       showToast('Loading quote...', 'info');
-      await CFM_SUPABASE.loadQuote(id);
+      await CFM_FIREBASE.loadQuote(id);
       closeQuotesModal();
       refreshActiveQuoteBanner();
       showToast('Quote loaded into editor.', 'success');
@@ -376,9 +411,9 @@
   async function handleDuplicateQuote(id) {
     try {
       showToast('Duplicating quote...', 'info');
-      await CFM_SUPABASE.loadQuote(id);
+      await CFM_FIREBASE.loadQuote(id);
       // Detach from existing saved ID so it saves as a brand new quote
-      CFM_SUPABASE.setActiveQuoteId(null);
+      CFM_FIREBASE.setActiveQuoteId(null);
       // Give it a fresh quote number
       if (typeof window.setQuote === 'function') {
         window.setQuote(true);
@@ -394,7 +429,7 @@
   async function handleDeleteQuote(id, quoteNum) {
     if (!confirm(`Are you sure you want to permanently delete Quote #${quoteNum}?`)) return;
     try {
-      await CFM_SUPABASE.deleteQuote(id);
+      await CFM_FIREBASE.deleteQuote(id);
       showToast(`Quote #${quoteNum} deleted.`, 'success');
       const q = document.getElementById('quotesSearchInput')?.value || '';
       loadQuotesList(q);
@@ -419,6 +454,7 @@
   window.handleSignOut = handleSignOut;
   window.openSettingsModal = openSettingsModal;
   window.closeSettingsModal = closeSettingsModal;
+  window.onSettingsSnippetInput = onSettingsSnippetInput;
   window.handleSaveSettings = handleSaveSettings;
   window.handleClearSettings = handleClearSettings;
   window.openQuotesModal = openQuotesModal;
@@ -433,9 +469,9 @@
 
   // Initialize on script load / DOM ready
   window.addEventListener('DOMContentLoaded', async () => {
-    if (window.CFM_SUPABASE) {
-      CFM_SUPABASE.initClient();
-      await CFM_SUPABASE.checkSession();
+    if (window.CFM_FIREBASE) {
+      CFM_FIREBASE.initClient();
+      await CFM_FIREBASE.checkSession();
       refreshAuthUI();
     }
   });

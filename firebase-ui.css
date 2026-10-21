@@ -1,5 +1,5 @@
 /* ==============================================================================
-   CFM Quote Tool - Supabase UI Styles (Light & Dark mode compatible)
+   CFM Quote Tool - Firebase UI Styles (Light & Dark mode compatible)
    ============================================================================== */
 
 /* Top Toolbar */
@@ -246,8 +246,22 @@
   letter-spacing: 0.5px;
 }
 
-.form-group input {
+.form-group input,
+.form-group textarea {
   width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.form-group textarea {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+  resize: vertical;
 }
 
 .form-help {

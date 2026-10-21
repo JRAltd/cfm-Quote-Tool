@@ -1,46 +1,179 @@
 // ==============================================================================
-// CFM Quote Tool - Supabase Integration Client
+// CFM Quote Tool - Firebase Integration Client (Firebase Auth + Cloud Firestore)
 // ==============================================================================
 
 (function() {
-  let supabase = null;
+  let app = null;
+  let auth = null;
+  let db = null;
   let currentUser = null;
-  let activeQuoteId = null; // null if creating a new quote, UUID if editing an existing quote
+  let activeQuoteId = null; // null if creating a new quote, document ID if editing an existing quote
+  let authReadyPromise = null;
+  let authUnsubscribe = null;
 
-  // Get configuration from window.SUPABASE_CONFIG or localStorage
+  const STORAGE_KEY = 'cfm_firebase_config';
+
+  // Parse a raw Firebase config snippet or JSON string into a config object
+  function parseConfigSnippet(raw) {
+    if (!raw || typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    // Try strict JSON first
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_) {}
+
+    // Extract key-value pairs from JS object snippet (e.g. const firebaseConfig = { apiKey: "...", ... })
+    const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'measurementId'];
+    const extracted = {};
+    let foundAny = false;
+    keys.forEach(k => {
+      const regex = new RegExp(`["']?${k}["']?\\s*:\\s*["']([^"']+)["']`);
+      const match = trimmed.match(regex);
+      if (match && match[1]) {
+        extracted[k] = match[1].trim();
+        foundAny = true;
+      }
+    });
+    return foundAny ? extracted : null;
+  }
+
+  // Get configuration from localStorage or window.FIREBASE_CONFIG
   function getConfig() {
-    const config = window.SUPABASE_CONFIG || {};
-    const url = (localStorage.getItem('cfm_supabase_url') || config.url || '').trim();
-    const anonKey = (localStorage.getItem('cfm_supabase_anon_key') || config.anonKey || '').trim();
-    return { url, anonKey };
+    const fileConfig = window.FIREBASE_CONFIG || {};
+    let storedConfig = {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        storedConfig = JSON.parse(raw) || {};
+      }
+    } catch (e) {
+      console.warn('Could not parse stored Firebase config:', e);
+    }
+
+    const apiKey = (storedConfig.apiKey || fileConfig.apiKey || '').trim();
+    const projectId = (storedConfig.projectId || fileConfig.projectId || '').trim();
+    const authDomain = (storedConfig.authDomain || fileConfig.authDomain || (projectId ? `${projectId}.firebaseapp.com` : '')).trim();
+    const storageBucket = (storedConfig.storageBucket || fileConfig.storageBucket || (projectId ? `${projectId}.appspot.com` : '')).trim();
+    const messagingSenderId = (storedConfig.messagingSenderId || fileConfig.messagingSenderId || '').trim();
+    const appId = (storedConfig.appId || fileConfig.appId || '').trim();
+
+    return {
+      apiKey,
+      authDomain,
+      projectId,
+      storageBucket,
+      messagingSenderId,
+      appId
+    };
   }
 
   function isConfigured() {
-    const { url, anonKey } = getConfig();
-    return Boolean(url && anonKey && url.startsWith('http'));
+    const { apiKey, projectId } = getConfig();
+    return Boolean(apiKey && projectId);
   }
 
   function initClient() {
-    const { url, anonKey } = getConfig();
-    if (url && anonKey && window.supabase) {
-      try {
-        supabase = window.supabase.createClient(url, anonKey);
-        return true;
-      } catch (err) {
-        console.error('Failed to initialize Supabase client:', err);
-      }
+    const config = getConfig();
+    if (!config.apiKey || !config.projectId || !window.firebase) {
+      app = null;
+      auth = null;
+      db = null;
+      return false;
     }
-    supabase = null;
-    return false;
+
+    try {
+      // Clean up previous auth listener if re-initializing
+      if (typeof authUnsubscribe === 'function') {
+        authUnsubscribe();
+        authUnsubscribe = null;
+      }
+
+      // Check if default app already exists
+      if (window.firebase.apps && window.firebase.apps.length > 0) {
+        const existingApp = window.firebase.app();
+        const existingOpts = existingApp.options || {};
+        if (existingOpts.apiKey === config.apiKey && existingOpts.projectId === config.projectId) {
+          app = existingApp;
+        } else {
+          // Delete old app instance asynchronously and create a new named/default one
+          const appName = 'cfm-app-' + Date.now();
+          app = window.firebase.initializeApp(config, appName);
+        }
+      } else {
+        app = window.firebase.initializeApp(config);
+      }
+
+      auth = window.firebase.auth(app);
+      db = window.firebase.firestore(app);
+
+      authReadyPromise = new Promise((resolve) => {
+        let resolved = false;
+        authUnsubscribe = auth.onAuthStateChanged((user) => {
+          currentUser = user || null;
+          if (!resolved) {
+            resolved = true;
+            resolve(currentUser);
+          }
+          if (typeof window.refreshAuthUI === 'function') {
+            window.refreshAuthUI();
+          }
+        }, (err) => {
+          console.warn('Firebase Auth state error:', err);
+          currentUser = null;
+          if (!resolved) {
+            resolved = true;
+            resolve(null);
+          }
+        });
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Failed to initialize Firebase client:', err);
+      app = null;
+      auth = null;
+      db = null;
+      return false;
+    }
+  }
+
+  function formatFirebaseError(err) {
+    if (!err) return 'An unknown error occurred.';
+    const code = err.code || '';
+    switch (code) {
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-disabled':
+        return 'This user account has been disabled.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+      case 'auth/invalid-login-credentials':
+        return 'Invalid email or password. Please try again.';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists. Try signing in instead.';
+      case 'auth/weak-password':
+        return 'Password should be at least 6 characters long.';
+      case 'auth/operation-not-allowed':
+        return 'Email/Password sign-in is not enabled in your Firebase Console (Authentication -> Sign-in method).';
+      case 'permission-denied':
+        return 'Permission denied by Firestore Security Rules. Verify you are signed in and rules are published.';
+      default:
+        return err.message || String(err);
+    }
   }
 
   // --- Auth APIs ---
   async function checkSession() {
-    if (!supabase) return null;
+    if (!auth) return null;
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      currentUser = session ? session.user : null;
+      if (authReadyPromise) {
+        await authReadyPromise;
+      }
+      currentUser = auth.currentUser || null;
       return currentUser;
     } catch (e) {
       console.warn('Session check warning:', e.message);
@@ -52,7 +185,7 @@
   function getUserProfile(user) {
     if (!user) return { name: '', email: '' };
     const email = user.email || '';
-    let name = user.user_metadata?.full_name || user.user_metadata?.name || '';
+    let name = user.displayName || '';
     if (!name && email) {
       const localPart = email.split('@')[0];
       name = localPart
@@ -64,28 +197,39 @@
   }
 
   async function signUp(email, password, fullName = '') {
-    if (!supabase) throw new Error('Supabase is not configured yet. Please enter your project URL & Key.');
-    const options = fullName ? { data: { full_name: fullName.trim() } } : undefined;
-    const { data, error } = await supabase.auth.signUp({ email, password, options });
-    if (error) throw error;
-    currentUser = data.user;
-    return data;
+    if (!auth) throw new Error('Firebase is not configured yet. Please connect your Firebase project first.');
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      if (fullName && fullName.trim() && userCredential.user) {
+        await userCredential.user.updateProfile({ displayName: fullName.trim() });
+      }
+      currentUser = auth.currentUser || userCredential.user;
+      return { user: currentUser };
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
+    }
   }
 
   async function signIn(email, password) {
-    if (!supabase) throw new Error('Supabase is not configured yet. Please enter your project URL & Key.');
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    currentUser = data.user;
-    return data;
+    if (!auth) throw new Error('Firebase is not configured yet. Please connect your Firebase project first.');
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      currentUser = userCredential.user;
+      return { user: currentUser };
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
+    }
   }
 
   async function signOut() {
-    if (!supabase) return;
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    currentUser = null;
-    activeQuoteId = null;
+    if (!auth) return;
+    try {
+      await auth.signOut();
+      currentUser = null;
+      activeQuoteId = null;
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
+    }
   }
 
   // --- Quote Serializer & Deserializer ---
@@ -165,7 +309,7 @@
     const total = parseFloat(totalRaw) || 0;
 
     return {
-      quote_number: quoteNum,
+      quote_number: String(quoteNum),
       customer_name: customer,
       quote_date: quoteDate || null,
       expiration_date: expDate || null,
@@ -269,77 +413,114 @@
     activeQuoteId = quote.id;
   }
 
-  // --- Database CRUD ---
+  // --- Cloud Firestore CRUD ---
   async function saveQuote() {
-    if (!supabase) throw new Error('Supabase is not configured yet.');
+    if (!db) throw new Error('Firebase is not configured yet.');
     if (!currentUser) throw new Error('Please log in first to save quotes.');
 
+    const nowIso = new Date().toISOString();
     const quotePayload = serializeCurrentQuote();
-    quotePayload.user_id = currentUser.id;
+    quotePayload.user_id = currentUser.uid;
+    quotePayload.updated_at = nowIso;
 
-    if (activeQuoteId) {
-      // Update existing quote
-      const { data, error } = await supabase
-        .from('quotes')
-        .update(quotePayload)
-        .eq('id', activeQuoteId)
-        .select()
-        .single();
-      if (error) throw error;
-      return { action: 'updated', quote: data };
-    } else {
-      // Create new quote
-      const { data, error } = await supabase
-        .from('quotes')
-        .insert(quotePayload)
-        .select()
-        .single();
-      if (error) throw error;
-      activeQuoteId = data.id;
-      return { action: 'created', quote: data };
+    try {
+      if (activeQuoteId) {
+        // Update existing quote document in Firestore
+        const docRef = db.collection('quotes').doc(activeQuoteId);
+        await docRef.set(quotePayload, { merge: true });
+        return {
+          action: 'updated',
+          quote: { id: activeQuoteId, ...quotePayload }
+        };
+      } else {
+        // Create new quote document in Firestore
+        quotePayload.created_at = nowIso;
+        const docRef = await db.collection('quotes').add(quotePayload);
+        activeQuoteId = docRef.id;
+        return {
+          action: 'created',
+          quote: { id: docRef.id, ...quotePayload }
+        };
+      }
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
     }
   }
 
   async function listQuotes(search = '') {
-    if (!supabase) throw new Error('Supabase is not configured.');
+    if (!db) throw new Error('Firebase is not configured.');
     if (!currentUser) throw new Error('Please log in to view your quotes.');
 
-    let query = supabase
-      .from('quotes')
-      .select('id, quote_number, customer_name, account_number, quote_date, total, updated_at, created_at')
-      .order('updated_at', { ascending: false });
+    try {
+      const snapshot = await db
+        .collection('quotes')
+        .where('user_id', '==', currentUser.uid)
+        .get();
 
-    if (search && search.trim()) {
-      const q = `%${search.trim()}%`;
-      query = query.or(`customer_name.ilike.${q},quote_number.ilike.${q},account_number.ilike.${q},po_number.ilike.${q}`);
+      let results = [];
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        results.push({
+          id: doc.id,
+          quote_number: d.quote_number || '',
+          customer_name: d.customer_name || '',
+          account_number: d.account_number || '',
+          po_number: d.po_number || '',
+          quote_date: d.quote_date || '',
+          total: d.total || 0,
+          updated_at: d.updated_at || d.created_at || '',
+          created_at: d.created_at || ''
+        });
+      });
+
+      // Sort by updated_at descending in memory (avoids requiring manual composite index creation in Firestore)
+      results.sort((a, b) => {
+        const tA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const tB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return tB - tA;
+      });
+
+      // Client-side case-insensitive search filter
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        results = results.filter(item =>
+          (item.customer_name && item.customer_name.toLowerCase().includes(q)) ||
+          (item.quote_number && String(item.quote_number).toLowerCase().includes(q)) ||
+          (item.account_number && item.account_number.toLowerCase().includes(q)) ||
+          (item.po_number && item.po_number.toLowerCase().includes(q))
+        );
+      }
+
+      return results;
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
     }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
   }
 
   async function loadQuote(id) {
-    if (!supabase) throw new Error('Supabase is not configured.');
-    const { data, error } = await supabase
-      .from('quotes')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (error) throw error;
-    populateQuoteIntoDOM(data);
-    return data;
+    if (!db) throw new Error('Firebase is not configured.');
+    try {
+      const doc = await db.collection('quotes').doc(id).get();
+      if (!doc.exists) {
+        throw new Error('Quote not found in Firestore.');
+      }
+      const data = { id: doc.id, ...doc.data() };
+      populateQuoteIntoDOM(data);
+      return data;
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
+    }
   }
 
   async function deleteQuote(id) {
-    if (!supabase) throw new Error('Supabase is not configured.');
-    const { error } = await supabase
-      .from('quotes')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-    if (activeQuoteId === id) {
-      activeQuoteId = null;
+    if (!db) throw new Error('Firebase is not configured.');
+    try {
+      await db.collection('quotes').doc(id).delete();
+      if (activeQuoteId === id) {
+        activeQuoteId = null;
+      }
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
     }
   }
 
@@ -352,23 +533,37 @@
   }
 
   // Save config into localStorage
-  function updateConfig(url, anonKey) {
-    if (url) localStorage.setItem('cfm_supabase_url', url.trim());
-    if (anonKey) localStorage.setItem('cfm_supabase_anon_key', anonKey.trim());
+  function updateConfig(configObj) {
+    const cleaned = {
+      apiKey: (configObj.apiKey || '').trim(),
+      projectId: (configObj.projectId || '').trim(),
+      authDomain: (configObj.authDomain || (configObj.projectId ? `${configObj.projectId.trim()}.firebaseapp.com` : '')).trim(),
+      storageBucket: (configObj.storageBucket || (configObj.projectId ? `${configObj.projectId.trim()}.appspot.com` : '')).trim(),
+      messagingSenderId: (configObj.messagingSenderId || '').trim(),
+      appId: (configObj.appId || '').trim()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
     initClient();
   }
 
   function clearConfig() {
-    localStorage.removeItem('cfm_supabase_url');
-    localStorage.removeItem('cfm_supabase_anon_key');
-    supabase = null;
+    localStorage.removeItem(STORAGE_KEY);
+    if (typeof authUnsubscribe === 'function') {
+      authUnsubscribe();
+      authUnsubscribe = null;
+    }
+    app = null;
+    auth = null;
+    db = null;
     currentUser = null;
+    activeQuoteId = null;
   }
 
-  // Export API to window.CFM_SUPABASE
-  window.CFM_SUPABASE = {
+  // Export API to window.CFM_FIREBASE (and alias CFM_SUPABASE for backwards compatibility)
+  const api = {
     initClient,
     getConfig,
+    parseConfigSnippet,
     isConfigured,
     updateConfig,
     clearConfig,
@@ -386,4 +581,7 @@
     setActiveQuoteId: (id) => { activeQuoteId = id; },
     getCurrentUser: () => currentUser
   };
+
+  window.CFM_FIREBASE = api;
+  window.CFM_SUPABASE = api;
 })();

@@ -2,7 +2,7 @@
 .env
 .env.local
 .env.*.local
-supabase-config.local.js
+firebase-config.local.js
 *Integration Info.txt
 
 # OS & Editor artifacts

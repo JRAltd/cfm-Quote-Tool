@@ -417,19 +417,21 @@
       body.cost-export table.items th:nth-child(8) { width: 12%; }
     }
   </style>
-  <link rel="stylesheet" href="supabase-ui.css">
+  <link rel="stylesheet" href="firebase-ui.css">
   <script src="customers.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script src="supabase-client.js"></script>
-  <script src="supabase-ui.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-client.js"></script>
+  <script src="firebase-ui.js"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <div class="noPrint top-toolbar">
-        <div class="top-toolbar-left" id="supabaseAuthStatus">
-          <!-- Populated by supabase-ui.js -->
+        <div class="top-toolbar-left" id="firebaseAuthStatus">
+          <!-- Populated by firebase-ui.js -->
         </div>
         <div class="top-toolbar-right">
           <button type="button" class="btn-sm btn-primary" onclick="openQuotesModal()">📂 My Quotes</button>
@@ -530,7 +532,7 @@
         <input id="quotedByName" type="text" placeholder="Representative Name" style="width: 200px;" oninput="syncQuotedBy()">
         <span style="font-weight: 700; font-size: 13px;">Email:</span>
         <input id="quotedByEmail" type="email" placeholder="Email" style="width: 240px;" oninput="syncQuotedBy()">
-        <button type="button" class="btn-sm" id="btnFillMyInfo" onclick="applyUserToQuotedBy(true)" title="Auto-fill with your Supabase login info" style="display: none;">Use My Login Info</button>
+        <button type="button" class="btn-sm" id="btnFillMyInfo" onclick="applyUserToQuotedBy(true)" title="Auto-fill with your Firebase login info" style="display: none;">Use My Login Info</button>
       </div>
     </div>
   </div>
@@ -786,10 +788,10 @@
     }
 
     function applyUserToQuotedBy(force = false) {
-      if (!window.CFM_SUPABASE) return;
-      const user = CFM_SUPABASE.getCurrentUser();
+      if (!window.CFM_FIREBASE) return;
+      const user = CFM_FIREBASE.getCurrentUser();
       if (!user) return;
-      const { name, email } = CFM_SUPABASE.getUserProfile(user);
+      const { name, email } = CFM_FIREBASE.getUserProfile(user);
       
       const nameInput = document.getElementById('quotedByName');
       const emailInput = document.getElementById('quotedByEmail');
@@ -808,7 +810,7 @@
       document.getElementById('tb').replaceChildren();
       document.getElementById('notesArea').replaceChildren();
       ['customerSearch', 'contactName', 'contactPhone', 'acctNumber', 'poNumber', 'quoteDate', 'expDate', 'freight'].forEach(f => document.getElementById(f).value = '');
-      if (window.CFM_SUPABASE) CFM_SUPABASE.setActiveQuoteId(null);
+      if (window.CFM_FIREBASE) CFM_FIREBASE.setActiveQuoteId(null);
       if (window.refreshAuthUI) refreshAuthUI();
       if (window.applyUserToQuotedBy) applyUserToQuotedBy(true);
       init();
@@ -823,7 +825,7 @@
       resetQuoteDirect();
     }
     
-    // Expose helpers for Supabase integration client
+    // Expose helpers for Firebase integration client
     window.esc = esc;
     window.actions = actions;
     window.addRow = addRow;
@@ -840,9 +842,9 @@
       addRow();
       syncQuotedBy();
 
-      if (window.CFM_SUPABASE) {
-        CFM_SUPABASE.initClient();
-        CFM_SUPABASE.checkSession().then(() => {
+      if (window.CFM_FIREBASE) {
+        CFM_FIREBASE.initClient();
+        CFM_FIREBASE.checkSession().then(() => {
           if (window.refreshAuthUI) refreshAuthUI();
           if (window.applyUserToQuotedBy) applyUserToQuotedBy(false);
         });
@@ -850,7 +852,7 @@
     };
   </script>
 
-  <!-- Supabase Modals -->
+  <!-- Firebase Modals -->
   <!-- 1. Auth Modal -->
   <div class="modal-backdrop" id="authModal">
     <div class="modal-card">
@@ -922,25 +924,36 @@
     </div>
   </div>
 
-  <!-- 3. Supabase Settings Modal -->
+  <!-- 3. Firebase Settings Modal -->
   <div class="modal-backdrop" id="settingsModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 class="modal-title">⚙ Supabase Configuration</h3>
+        <h3 class="modal-title">⚙ Firebase Configuration</h3>
         <button type="button" class="modal-close" onclick="closeSettingsModal()" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
         <div id="settingsAlert" class="form-alert"></div>
         <form onsubmit="handleSaveSettings(event)">
           <div class="form-group">
-            <label for="settingsUrl">Supabase Project URL</label>
-            <input type="url" id="settingsUrl" placeholder="https://xyzcompany.supabase.co" required>
-            <div class="form-help">Found in Supabase: Project Settings &rarr; API &rarr; Project URL</div>
+            <label for="settingsSnippet">Quick Paste (Optional)</label>
+            <textarea id="settingsSnippet" rows="3" placeholder="Paste your firebaseConfig = { apiKey: '...', projectId: '...' } snippet here to auto-fill below" oninput="onSettingsSnippetInput()"></textarea>
+            <div class="form-help">Found in Firebase Console: Project Settings &rarr; General &rarr; Your apps &rarr; Web app</div>
           </div>
           <div class="form-group">
-            <label for="settingsKey">Supabase Anon Key (Public)</label>
-            <input type="password" id="settingsKey" placeholder="eyJhbGciOiJIUzI1NiIsIn..." required>
-            <div class="form-help">Found in Supabase: Project Settings &rarr; API &rarr; Project API keys (anon public)</div>
+            <label for="settingsProjectId">Firebase Project ID *</label>
+            <input type="text" id="settingsProjectId" placeholder="my-cfm-quote-project" required>
+          </div>
+          <div class="form-group">
+            <label for="settingsApiKey">Web API Key *</label>
+            <input type="password" id="settingsApiKey" placeholder="AIzaSy..." required>
+          </div>
+          <div class="form-group">
+            <label for="settingsAuthDomain">Auth Domain (Optional)</label>
+            <input type="text" id="settingsAuthDomain" placeholder="my-cfm-quote-project.firebaseapp.com">
+          </div>
+          <div class="form-group">
+            <label for="settingsAppId">App ID (Optional)</label>
+            <input type="text" id="settingsAppId" placeholder="1:1234567890:web:abcdef123456">
           </div>
           <div class="modal-footer" style="padding: 16px 0 0 0; background: transparent; border: none; justify-content: space-between;">
             <button type="button" class="btn-sm btn-danger" onclick="handleClearSettings()">Disconnect</button>
