@@ -1,0 +1,227 @@
+name: Sync NetSuite Customers from Outlook
+
+on:
+  schedule:
+    # Runs daily at 08:15 UTC (3:15 AM Central Time, right after NetSuite's 2:00 AM report)
+    - cron: '15 8 * * *'
+  workflow_dispatch: # Allows manual 1-click run anytime from the Actions tab on GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  sync-customers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch NetSuite CSV from Outlook and Merge into customers.js
+        env:
+          OUTLOOK_REFRESH_TOKEN: ${{ secrets.OUTLOOK_REFRESH_TOKEN }}
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+
+          const CLIENT_ID = '14d82eec-204b-4c2f-b7e8-296a70dab67e';
+          const refreshToken = (process.env.OUTLOOK_REFRESH_TOKEN || '').trim();
+          if (!refreshToken) {
+            console.error('Missing OUTLOOK_REFRESH_TOKEN secret.');
+            process.exit(1);
+          }
+
+          function parseCSVLine(line) {
+            const res = [];
+            let cur = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+              const ch = line[i];
+              if (inQuotes) {
+                if (ch === '"') {
+                  if (i + 1 < line.length && line[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                  } else {
+                    inQuotes = false;
+                  }
+                } else {
+                  cur += ch;
+                }
+              } else {
+                if (ch === '"') {
+                  inQuotes = true;
+                } else if (ch === ',') {
+                  res.push(cur.trim());
+                  cur = '';
+                } else {
+                  cur += ch;
+                }
+              }
+            }
+            res.push(cur.trim());
+            return res;
+          }
+
+          function parseNetSuiteCSV(csvText) {
+            const lines = csvText.split(/\r?\n/);
+            let headerIdx = -1;
+            let colMap = { customer: 0, acct: -1, contact: -1, phone: -1, email: -1, salesRep: 1, status: -1 };
+
+            for (let i = 0; i < Math.min(lines.length, 25); i++) {
+              const cols = parseCSVLine(lines[i]).map(c => c.toLowerCase().trim());
+              if (cols.length >= 2 && (cols.includes('customer') || cols.includes('name') || cols.includes('company name') || cols.includes('id'))) {
+                headerIdx = i;
+                colMap = {
+                  customer: cols.findIndex(c => c === 'customer' || c === 'name' || c === 'company name'),
+                  acct: cols.findIndex(c => c === 'account' || c === 'account number' || c === 'account #' || c === 'id' || c === 'entity id'),
+                  contact: cols.findIndex(c => c.includes('contact')),
+                  phone: cols.findIndex(c => c.includes('phone')),
+                  email: cols.findIndex(c => c.includes('email') || c.includes('e-mail')),
+                  salesRep: cols.findIndex(c => c.includes('sales rep') || c === 'rep'),
+                  status: cols.findIndex(c => c.includes('status') || c.includes('stage'))
+                };
+                if (colMap.customer === -1 && colMap.acct !== -1) colMap.customer = colMap.acct;
+                break;
+              }
+            }
+
+            const rows = [];
+            const startRow = headerIdx !== -1 ? headerIdx + 1 : 0;
+            for (let i = startRow; i < lines.length; i++) {
+              const rawLine = lines[i].trim();
+              if (!rawLine) continue;
+              const cols = parseCSVLine(rawLine);
+              const rawCust = (cols[colMap.customer >= 0 ? colMap.customer : 0] || '').trim();
+              if (!rawCust) continue;
+
+              if (
+                /^total\s*-/i.test(rawCust) ||
+                /^total$/i.test(rawCust) ||
+                /^customer$/i.test(rawCust) ||
+                /^cfm\s+(distributors|current customer)/i.test(rawCust) ||
+                /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d+/i.test(rawCust)
+              ) {
+                continue;
+              }
+
+              let acct = (colMap.acct >= 0 && colMap.acct !== colMap.customer ? (cols[colMap.acct] || '').trim() : '');
+              let name = rawCust;
+              const prefixMatch = rawCust.match(/^([A-Z0-9]+(?::\d+)?)\s+(.+)$/i);
+              if (!acct && prefixMatch) {
+                acct = prefixMatch[1].trim();
+                name = prefixMatch[2].trim();
+              } else if (acct && name.toUpperCase().startsWith(acct.toUpperCase() + ' ')) {
+                name = name.slice(acct.length).trim();
+              }
+              if (!acct || !name) continue;
+
+              const contact = colMap.contact >= 0 ? (cols[colMap.contact] || '').trim() : '';
+              const phone = colMap.phone >= 0 ? (cols[colMap.phone] || '').trim() : '';
+              const email = colMap.email >= 0 ? (cols[colMap.email] || '').trim() : '';
+              const salesRep = colMap.salesRep >= 0 ? (cols[colMap.salesRep] || '').trim() : '';
+              const status = (colMap.status >= 0 ? (cols[colMap.status] || '').trim() : '') || 'CUSTOMER-Active';
+
+              rows.push([name, contact, phone, email, salesRep, status, acct]);
+            }
+            return rows;
+          }
+
+          (async () => {
+            // 1. Exchange refresh_token for access_token
+            const tokenParams = new URLSearchParams({
+              client_id: CLIENT_ID,
+              grant_type: 'refresh_token',
+              refresh_token: refreshToken,
+              scope: 'offline_access https://graph.microsoft.com/Mail.Read'
+            });
+            const tokenRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
+              method: 'POST',
+              body: tokenParams
+            });
+            const tokenData = await tokenRes.json();
+            if (!tokenRes.ok || !tokenData.access_token) {
+              throw new Error('Failed to refresh Microsoft token: ' + JSON.stringify(tokenData));
+            }
+            const headers = { Authorization: `Bearer ${tokenData.access_token}` };
+
+            // 2. Load existing customers.js
+            const custText = fs.readFileSync('customers.js', 'utf8');
+            const match = custText.match(/const CUSTOMERS=(\[[\s\S]*\]);/);
+            if (!match) throw new Error('Could not parse customers.js');
+            const existing = JSON.parse(match[1]);
+
+            const byAcct = new Map();
+            existing.forEach(c => {
+              if (c && c[6]) byAcct.set(String(c[6]).toUpperCase(), c);
+            });
+
+            // 3. Fetch recent messages from Outlook
+            const msgsUrl = 'https://graph.microsoft.com/v1.0/me/messages?$top=15&$select=id,subject,hasAttachments,receivedDateTime&$orderby=receivedDateTime%20desc';
+            const msgsRes = await fetch(msgsUrl, { headers });
+            const msgsData = await msgsRes.json();
+            const messages = Array.isArray(msgsData.value) ? msgsData.value : [];
+
+            let addedCount = 0;
+            let updatedCount = 0;
+            let csvFoundCount = 0;
+
+            // Process messages oldest-to-newest among the recent batch
+            for (const msg of [...messages].reverse()) {
+              if (!msg.hasAttachments) continue;
+              const attRes = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${msg.id}/attachments`, { headers });
+              const attData = await attRes.json();
+              const attachments = Array.isArray(attData.value) ? attData.value : [];
+
+              for (const att of attachments) {
+                if (!att.name || !att.name.toLowerCase().endsWith('.csv') || !att.contentBytes) continue;
+                const csvText = Buffer.from(att.contentBytes, 'base64').toString('utf8');
+                if (!/cfm Current Customer List|cfm Distributors/i.test(csvText.slice(0, 600))) continue;
+
+                csvFoundCount++;
+                console.log(`Processing attachment "${att.name}" from email "${msg.subject}" (${msg.receivedDateTime})...`);
+                const rows = parseNetSuiteCSV(csvText);
+
+                for (const r of rows) {
+                  const [name, contact, phone, email, salesRep, status, acct] = r;
+                  const key = String(acct).toUpperCase();
+                  if (byAcct.has(key)) {
+                    const entry = byAcct.get(key);
+                    let changed = false;
+                    if (name && entry[0] !== name) { entry[0] = name; changed = true; }
+                    if (contact && entry[1] !== contact) { entry[1] = contact; changed = true; }
+                    if (phone && entry[2] !== phone) { entry[2] = phone; changed = true; }
+                    if (email && entry[3] !== email) { entry[3] = email; changed = true; }
+                    if (salesRep && entry[4] !== salesRep) { entry[4] = salesRep; changed = true; }
+                    if (changed) updatedCount++;
+                  } else {
+                    const newEntry = [name, contact, phone, email, salesRep || 'Inside Sales', status || 'CUSTOMER-Active', acct];
+                    existing.push(newEntry);
+                    byAcct.set(key, newEntry);
+                    addedCount++;
+                  }
+                }
+              }
+            }
+
+            console.log(`Checked ${messages.length} recent emails (${csvFoundCount} NetSuite CSVs found). Added: ${addedCount}, Updated: ${updatedCount}, Total: ${existing.length}`);
+
+            if (addedCount > 0 || updatedCount > 0) {
+              existing.sort((a, b) => String(a[0] || '').toLowerCase().localeCompare(String(b[0] || '').toLowerCase()));
+              const outContent = '// Auto-generated from Customers690.csv\n// Fields: [Name, Primary Contact, Phone, Email, Sales Rep, Status, Account Number]\nconst CUSTOMERS=' + JSON.stringify(existing) + ';\n';
+              fs.writeFileSync('customers.js', outContent, 'utf8');
+            }
+          })();
+          EOF
+
+      - name: Commit and Push if customers.js changed
+        run: |
+          if [[ -n "$(git status --porcelain customers.js)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add customers.js
+            git commit -m "Auto-sync NetSuite customer list from Outlook"
+            git push origin main
+            echo "Pushed updated customers.js to main!"
+          else
+            echo "No changes to customers.js."
+          fi
