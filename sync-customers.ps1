@@ -1,12 +1,13 @@
 # ==============================================================================
 # CFM Quote Tool - Automated NetSuite Customer Sync Script
 # ==============================================================================
-# Scans:
-#   1. C:\Users\jralt\Downloads (only CSVs containing "cfm Current Customer List")
-#   2. C:\Users\jralt\OneDrive\CFM-Customer-Sync
-#   3. e:\Software\cfm-Quote-Tool
-# Merges new/updated customers into customers.js, archives the CSV, and pushes
-# any updates to GitHub automatically.
+# 1. Connects to jraltd@outlook.com via Microsoft Graph (if connected via
+#    connect-outlook.ps1) and automatically downloads new NetSuite .csv
+#    attachments into OneDrive\CFM-Customer-Sync.
+# 2. Also scans Downloads, OneDrive\Attachments, OneDrive\CFM-Customer-Sync,
+#    and e:\Software\cfm-Quote-Tool for any NetSuite .csv files.
+# 3. Merges new/updated customers into customers.js, archives the CSV, and
+#    pushes updates to GitHub automatically.
 # ==============================================================================
 
 $ErrorActionPreference = 'Stop'
@@ -15,12 +16,74 @@ $CustomersJsPath = Join-Path $RepoDir "customers.js"
 $OneDriveSyncDir = "C:\Users\jralt\OneDrive\CFM-Customer-Sync"
 $DownloadsDir = "C:\Users\jralt\Downloads"
 $ProcessedDir = Join-Path $OneDriveSyncDir "Processed"
+$TokenFilePath = "C:\Users\jralt\.cfm-outlook-token.dat"
+$ProcessedMsgIdsPath = Join-Path $ProcessedDir "processed-message-ids.txt"
+$ClientId = "14d82eec-204b-4c2f-b7e8-296a70dab67e" # Official Microsoft Graph CLI Client ID
 
 if (-not (Test-Path $OneDriveSyncDir)) {
   New-Item -ItemType Directory -Path $OneDriveSyncDir -Force | Out-Null
 }
 if (-not (Test-Path $ProcessedDir)) {
   New-Item -ItemType Directory -Path $ProcessedDir -Force | Out-Null
+}
+
+# ------------------------------------------------------------------------------
+# Step 0: Auto-download new NetSuite CSV attachments from jraltd@outlook.com
+# ------------------------------------------------------------------------------
+if (Test-Path $TokenFilePath) {
+  try {
+    $encToken = Get-Content -Raw $TokenFilePath
+    $secString = ConvertTo-SecureString $encToken.Trim()
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secString)
+    $refreshToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+
+    $tokenRes = Invoke-RestMethod -Method Post -Uri "https://login.microsoftonline.com/consumers/oauth2/v2.0/token" -Body @{
+      client_id     = $ClientId
+      grant_type    = "refresh_token"
+      refresh_token = $refreshToken
+      scope         = "offline_access https://graph.microsoft.com/Mail.Read"
+    }
+
+    if ($tokenRes.refresh_token) {
+      $newSec = ConvertTo-SecureString $tokenRes.refresh_token -AsPlainText -Force
+      ConvertFrom-SecureString $newSec | Set-Content -Path $TokenFilePath -NoNewline
+    }
+
+    $accessToken = $tokenRes.access_token
+    $headers = @{ Authorization = "Bearer $accessToken" }
+
+    $processedIds = @{}
+    if (Test-Path $ProcessedMsgIdsPath) {
+      Get-Content $ProcessedMsgIdsPath | ForEach-Object { if ($_.Trim()) { $processedIds[$_.Trim()] = $true } }
+    }
+
+    $msgsRes = Invoke-RestMethod -Method Get -Uri "https://graph.microsoft.com/v1.0/me/messages?`$top=20&`$select=id,subject,hasAttachments,receivedDateTime&`$orderby=receivedDateTime desc" -Headers $headers
+    foreach ($msg in $msgsRes.value) {
+      if (-not $msg.hasAttachments) { continue }
+      if ($processedIds.ContainsKey($msg.id)) { continue }
+
+      $attRes = Invoke-RestMethod -Method Get -Uri "https://graph.microsoft.com/v1.0/me/messages/$($msg.id)/attachments" -Headers $headers
+      $foundNetSuiteCsv = $false
+      foreach ($att in $attRes.value) {
+        if ($att.name -match '\.csv$' -and $att.contentBytes) {
+          $bytes = [System.Convert]::FromBase64String($att.contentBytes)
+          $textPreview = [System.Text.Encoding]::UTF8.GetString($bytes, 0, [Math]::Min($bytes.Length, 500))
+          if ($textPreview -match 'cfm Current Customer List' -or $textPreview -match 'cfm Distributors') {
+            $outPath = Join-Path $OneDriveSyncDir ("outlook-" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $att.name)
+            [System.IO.File]::WriteAllBytes($outPath, $bytes)
+            Write-Host "Auto-downloaded NetSuite CSV attachment from Outlook: $($att.name) (Subject: $($msg.subject))"
+            $foundNetSuiteCsv = $true
+          }
+        }
+      }
+      # Record message ID so we don't re-download attachments from this email again
+      Add-Content -Path $ProcessedMsgIdsPath -Value $msg.id
+      $processedIds[$msg.id] = $true
+    }
+  } catch {
+    Write-Host "Outlook auto-check warning: $($_.Exception.Message)"
+  }
 }
 
 $csvFiles = New-Object System.Collections.Generic.List[System.IO.FileInfo]
