@@ -636,11 +636,14 @@
 
       if (!acct || !name) continue;
 
+      const rawStatus = colMap.status >= 0 ? (cols[colMap.status] || '').trim() : '';
+      if (rawStatus && !/^customer/i.test(rawStatus)) continue;
+
       const contact = colMap.contact >= 0 ? (cols[colMap.contact] || '').trim() : '';
       const phone = colMap.phone >= 0 ? (cols[colMap.phone] || '').trim() : '';
       const email = colMap.email >= 0 ? (cols[colMap.email] || '').trim() : '';
       const salesRep = colMap.salesRep >= 0 ? (cols[colMap.salesRep] || '').trim() : '';
-      const status = (colMap.status >= 0 ? (cols[colMap.status] || '').trim() : '') || 'CUSTOMER-Active';
+      const status = rawStatus || 'CUSTOMER-Active';
 
       const key = acct.toUpperCase();
       if (byAcct.has(key)) {

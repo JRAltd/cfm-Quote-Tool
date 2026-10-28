@@ -119,7 +119,9 @@ jobs:
               const phone = colMap.phone >= 0 ? (cols[colMap.phone] || '').trim() : '';
               const email = colMap.email >= 0 ? (cols[colMap.email] || '').trim() : '';
               const salesRep = colMap.salesRep >= 0 ? (cols[colMap.salesRep] || '').trim() : '';
-              const status = (colMap.status >= 0 ? (cols[colMap.status] || '').trim() : '') || 'CUSTOMER-Active';
+              const rawStatus = colMap.status >= 0 ? (cols[colMap.status] || '').trim() : '';
+              if (rawStatus && !/^customer/i.test(rawStatus)) continue;
+              const status = rawStatus || 'CUSTOMER-Active';
 
               rows.push([name, contact, phone, email, salesRep, status, acct]);
             }
@@ -175,7 +177,7 @@ jobs:
               for (const att of attachments) {
                 if (!att.name || !att.name.toLowerCase().endsWith('.csv') || !att.contentBytes) continue;
                 const csvText = Buffer.from(att.contentBytes, 'base64').toString('utf8');
-                if (!/cfm Current Customer List|cfm Distributors/i.test(csvText.slice(0, 600))) continue;
+                if (!/cfm Current Customer List|cfm Distributors|Custom Customer|ID,Name,/i.test(csvText.slice(0, 800))) continue;
 
                 csvFoundCount++;
                 console.log(`Processing attachment "${att.name}" from email "${msg.subject}" (${msg.receivedDateTime})...`);

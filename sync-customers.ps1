@@ -1,12 +1,13 @@
 # ==============================================================================
 # CFM Quote Tool - Automated NetSuite Customer Sync Script
 # ==============================================================================
-# 1. Connects to jraltd@outlook.com via Microsoft Graph (if connected via
-#    connect-outlook.ps1) and automatically downloads new NetSuite .csv
-#    attachments into OneDrive\CFM-Customer-Sync.
+# 1. Connects to jraltd@outlook.com via Microsoft Graph and automatically
+#    downloads new NetSuite .csv attachments into OneDrive\CFM-Customer-Sync.
 # 2. Also scans Downloads, OneDrive\Attachments, OneDrive\CFM-Customer-Sync,
 #    and e:\Software\cfm-Quote-Tool for any NetSuite .csv files.
-# 3. Merges new/updated customers into customers.js, archives the CSV, and
+# 3. Supports both NetSuite Saved Search CSVs (ID,Name,Primary Contact,Phone,...)
+#    and NetSuite Report CSVs (cfm Current Customer List).
+# 4. Merges new/updated customers into customers.js, archives the CSV, and
 #    pushes updates to GitHub automatically.
 # ==============================================================================
 
@@ -18,7 +19,7 @@ $DownloadsDir = "C:\Users\jralt\Downloads"
 $ProcessedDir = Join-Path $OneDriveSyncDir "Processed"
 $TokenFilePath = "C:\Users\jralt\.cfm-outlook-token.dat"
 $ProcessedMsgIdsPath = Join-Path $ProcessedDir "processed-message-ids.txt"
-$ClientId = "14d82eec-204b-4c2f-b7e8-296a70dab67e" # Official Microsoft Graph CLI Client ID
+$ClientId = "14d82eec-204b-4c2f-b7e8-296a70dab67e"
 
 if (-not (Test-Path $OneDriveSyncDir)) {
   New-Item -ItemType Directory -Path $OneDriveSyncDir -Force | Out-Null
@@ -64,20 +65,17 @@ if (Test-Path $TokenFilePath) {
       if ($processedIds.ContainsKey($msg.id)) { continue }
 
       $attRes = Invoke-RestMethod -Method Get -Uri "https://graph.microsoft.com/v1.0/me/messages/$($msg.id)/attachments" -Headers $headers
-      $foundNetSuiteCsv = $false
       foreach ($att in $attRes.value) {
         if ($att.name -match '\.csv$' -and $att.contentBytes) {
           $bytes = [System.Convert]::FromBase64String($att.contentBytes)
-          $textPreview = [System.Text.Encoding]::UTF8.GetString($bytes, 0, [Math]::Min($bytes.Length, 500))
-          if ($textPreview -match 'cfm Current Customer List' -or $textPreview -match 'cfm Distributors') {
+          $textPreview = [System.Text.Encoding]::UTF8.GetString($bytes, 0, [Math]::Min($bytes.Length, 800))
+          if ($textPreview -match 'cfm Current Customer List|cfm Distributors|Custom Customer|ID,Name,') {
             $outPath = Join-Path $OneDriveSyncDir ("outlook-" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $att.name)
             [System.IO.File]::WriteAllBytes($outPath, $bytes)
             Write-Host "Auto-downloaded NetSuite CSV attachment from Outlook: $($att.name) (Subject: $($msg.subject))"
-            $foundNetSuiteCsv = $true
           }
         }
       }
-      # Record message ID so we don't re-download attachments from this email again
       Add-Content -Path $ProcessedMsgIdsPath -Value $msg.id
       $processedIds[$msg.id] = $true
     }
@@ -92,7 +90,7 @@ $csvFiles = New-Object System.Collections.Generic.List[System.IO.FileInfo]
 Get-ChildItem -Path $OneDriveSyncDir -Filter "*.csv" -File -ErrorAction SilentlyContinue | ForEach-Object { $csvFiles.Add($_) }
 Get-ChildItem -Path $RepoDir -Filter "*.csv" -File -ErrorAction SilentlyContinue | ForEach-Object { $csvFiles.Add($_) }
 
-# 2. Check Downloads and OneDrive attachment folders ONLY for NetSuite "cfm Current Customer List" CSVs
+# 2. Check Downloads and OneDrive attachment folders ONLY for NetSuite CSVs
 $watchFolders = @(
   $DownloadsDir,
   (Join-Path "C:\Users\jralt\OneDrive" "Attachments"),
@@ -102,8 +100,8 @@ foreach ($folder in $watchFolders) {
   if (Test-Path $folder) {
     Get-ChildItem -Path $folder -Filter "*.csv" -File -ErrorAction SilentlyContinue | ForEach-Object {
       try {
-        $head = (Get-Content -Path $_.FullName -TotalCount 6 -ErrorAction Stop) -join "`n"
-        if ($head -match 'cfm Current Customer List' -or $head -match 'cfm Distributors') {
+        $head = (Get-Content -Path $_.FullName -TotalCount 8 -ErrorAction Stop) -join "`n"
+        if ($head -match 'cfm Current Customer List|cfm Distributors|Custom Customer|ID,Name,') {
           $csvFiles.Add($_)
         }
       } catch {}
@@ -133,64 +131,83 @@ foreach ($c in $existing) {
 
 $totalAdded = 0
 $totalUpdated = 0
+$headers15 = 0..14 | ForEach-Object { "Col$_" }
 
 foreach ($file in $csvFiles) {
   Write-Host "Processing $($file.FullName)..."
-  $csvRows = Import-Csv $file.FullName -Header @('Col0','Col1','Col2','Col3','Col4','Col5','Col6','Col7')
+  $csvRows = Import-Csv $file.FullName -Header $headers15
 
-  # Detect header row if custom columns (like Phone / Primary Contact) were added
   $colCustomer = 0
+  $colAcct = -1
   $colRep = 1
   $colContact = -1
   $colPhone = -1
   $colEmail = -1
+  $colStatus = -1
 
   foreach ($row in $csvRows | Select-Object -First 15) {
-    $vals = @($row.Col0, $row.Col1, $row.Col2, $row.Col3, $row.Col4, $row.Col5, $row.Col6, $row.Col7) | ForEach-Object { ([string]$_).Trim().ToLower() }
-    if ($vals -contains 'customer' -or $vals -contains 'name') {
+    $vals = $headers15 | ForEach-Object { ([string]$row.$_).Trim().ToLower() }
+    if ($vals -contains 'customer' -or $vals -contains 'name' -or $vals -contains 'id') {
+      $colCustomer = -1
+      $colAcct = -1
+      $colRep = -1
       for ($i = 0; $i -lt $vals.Count; $i++) {
-        if ($vals[$i] -eq 'customer' -or $vals[$i] -eq 'name') { $colCustomer = $i }
-        elseif ($vals[$i] -match 'sales rep|^rep$') { $colRep = $i }
-        elseif ($vals[$i] -match 'contact') { $colContact = $i }
-        elseif ($vals[$i] -match 'phone') { $colPhone = $i }
-        elseif ($vals[$i] -match 'email|e-mail') { $colEmail = $i }
+        $v = $vals[$i]
+        if ($colCustomer -eq -1 -and ($v -eq 'customer' -or $v -eq 'name' -or $v -eq 'company name')) { $colCustomer = $i }
+        elseif ($colAcct -eq -1 -and ($v -eq 'id' -or $v -eq 'account' -or $v -eq 'account number')) { $colAcct = $i }
+        elseif ($colRep -eq -1 -and ($v -match 'sales rep|^rep$')) { $colRep = $i }
+        elseif ($colContact -eq -1 -and ($v -match 'contact')) { $colContact = $i }
+        elseif ($colPhone -eq -1 -and ($v -match 'phone')) { $colPhone = $i }
+        elseif ($colEmail -eq -1 -and ($v -match 'email|e-mail')) { $colEmail = $i }
+        elseif ($colStatus -eq -1 -and ($v -match 'status|stage')) { $colStatus = $i }
       }
+      if ($colCustomer -eq -1) { $colCustomer = 0 }
       break
     }
   }
 
   foreach ($row in $csvRows) {
-    $cols = @($row.Col0, $row.Col1, $row.Col2, $row.Col3, $row.Col4, $row.Col5, $row.Col6, $row.Col7)
-    $custCol = ([string]$cols[$colCustomer]).Trim()
-    if (-not $custCol -or $custCol -match '^(Customer|Name|Total\s*-|Total$|cfm\s|(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+)') {
+    $cols = $headers15 | ForEach-Object { ([string]$row.$_).Trim() }
+    $rawCust = if ($colCustomer -ge 0) { $cols[$colCustomer] } else { "" }
+    if (-not $rawCust -or $rawCust -match '^(Customer|Name|ID|Total\s*-|Total$|cfm\s|Custom Customer|(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+)') {
       continue
     }
 
-    if ($custCol -match '^([A-Z0-9]+(?::\d+)?)\s+(.+)$') {
+    $rawStatus = if ($colStatus -ge 0) { $cols[$colStatus] } else { "" }
+    if ($rawStatus -and $rawStatus -notmatch '^CUSTOMER-') { continue }
+    $status = if ($rawStatus) { $rawStatus } else { "CUSTOMER-Active" }
+
+    $acct = if ($colAcct -ge 0 -and $colAcct -ne $colCustomer) { $cols[$colAcct] } else { "" }
+    $name = $rawCust
+
+    if (-not $acct -and $rawCust -match '^([A-Z0-9]+(?::\d+)?)\s+(.+)$') {
       $acct = $matches[1].Trim()
       $name = $matches[2].Trim()
-      $rep = if ($colRep -ge 0) { ([string]$cols[$colRep]).Trim() } else { "" }
-      $contact = if ($colContact -ge 0) { ([string]$cols[$colContact]).Trim() } else { "" }
-      $phone = if ($colPhone -ge 0) { ([string]$cols[$colPhone]).Trim() } else { "" }
-      $email = if ($colEmail -ge 0) { ([string]$cols[$colEmail]).Trim() } else { "" }
+    }
+    if (-not $acct -or -not $name -or $acct -eq 'ID') { continue }
 
-      $key = $acct.ToUpper()
-      if ($byAcct.ContainsKey($key)) {
-        $entry = $byAcct[$key]
-        $changed = $false
-        if ($name -and $entry[0] -ne $name) { $entry[0] = $name; $changed = $true }
-        if ($contact -and $entry[1] -ne $contact) { $entry[1] = $contact; $changed = $true }
-        if ($phone -and $entry[2] -ne $phone) { $entry[2] = $phone; $changed = $true }
-        if ($email -and $entry[3] -ne $email) { $entry[3] = $email; $changed = $true }
-        if ($rep -and $entry[4] -ne $rep) { $entry[4] = $rep; $changed = $true }
-        if ($changed) { $totalUpdated++ }
-      } else {
-        $repVal = if ($rep) { $rep } else { "Inside Sales" }
-        $newEntry = [string[]]@($name, $contact, $phone, $email, $repVal, "CUSTOMER-Active", $acct)
-        $list.Add($newEntry)
-        $byAcct[$key] = $newEntry
-        $totalAdded++
-      }
+    $rep = if ($colRep -ge 0) { $cols[$colRep] } else { "" }
+    $contact = if ($colContact -ge 0) { $cols[$colContact] } else { "" }
+    $phone = if ($colPhone -ge 0) { $cols[$colPhone] } else { "" }
+    $email = if ($colEmail -ge 0) { $cols[$colEmail] } else { "" }
+
+    $key = $acct.ToUpper()
+    if ($byAcct.ContainsKey($key)) {
+      $entry = $byAcct[$key]
+      $changed = $false
+      if ($name -and $entry[0] -ne $name) { $entry[0] = $name; $changed = $true }
+      if ($contact -and $entry[1] -ne $contact) { $entry[1] = $contact; $changed = $true }
+      if ($phone -and $entry[2] -ne $phone) { $entry[2] = $phone; $changed = $true }
+      if ($email -and $entry[3] -ne $email) { $entry[3] = $email; $changed = $true }
+      if ($rep -and $entry[4] -ne $rep) { $entry[4] = $rep; $changed = $true }
+      if ($rawStatus -and $entry[5] -ne $rawStatus) { $entry[5] = $rawStatus; $changed = $true }
+      if ($changed) { $totalUpdated++ }
+    } else {
+      $repVal = if ($rep) { $rep } else { "Inside Sales" }
+      $newEntry = [string[]]@($name, $contact, $phone, $email, $repVal, $status, $acct)
+      $list.Add($newEntry)
+      $byAcct[$key] = $newEntry
+      $totalAdded++
     }
   }
 
