@@ -439,6 +439,174 @@
     }
   }
 
+  // --- NetSuite Customer Sync Modal ---
+  let pendingCustomerSyncPreview = null;
+
+  async function openCustomerSyncModal() {
+    if (!CFM_FIREBASE.isConfigured()) {
+      showToast('Please connect Firebase first to sync customers.', 'error');
+      openSettingsModal();
+      return;
+    }
+
+    const user = CFM_FIREBASE.getCurrentUser();
+    if (!user) {
+      showToast('Please log in to sync customer records to Cloud Firestore.', 'error');
+      openAuthModal('signin');
+      return;
+    }
+
+    pendingCustomerSyncPreview = null;
+    const fileInput = document.getElementById('customerCsvInput');
+    if (fileInput) fileInput.value = '';
+    const previewArea = document.getElementById('customerSyncPreviewArea');
+    if (previewArea) previewArea.style.display = 'none';
+    const confirmBtn = document.getElementById('confirmCustomerSyncBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+    const alert = document.getElementById('customerSyncAlert');
+    if (alert) {
+      alert.className = 'form-alert';
+      alert.innerText = '';
+    }
+
+    const statusLine = document.getElementById('customerSyncStatusLine');
+    const totalNow = (typeof CUSTOMERS !== 'undefined' && Array.isArray(CUSTOMERS)) ? CUSTOMERS.length : 0;
+    const meta = CFM_FIREBASE.getCustomerSyncMeta ? CFM_FIREBASE.getCustomerSyncMeta() : null;
+    if (statusLine) {
+      if (meta && meta.updated_at) {
+        const dt = new Date(meta.updated_at).toLocaleString();
+        statusLine.innerHTML = `Active directory: <strong>${totalNow.toLocaleString()} customers</strong> &middot; Last cloud sync: <strong>${escapeHtml(dt)}</strong> by ${escapeHtml(meta.updated_by || 'Team')}`;
+      } else {
+        statusLine.innerHTML = `Active directory: <strong>${totalNow.toLocaleString()} customers</strong> (loaded from built-in database)`;
+      }
+    }
+
+    document.getElementById('customerSyncModal')?.classList.add('show');
+  }
+
+  function closeCustomerSyncModal() {
+    document.getElementById('customerSyncModal')?.classList.remove('show');
+    pendingCustomerSyncPreview = null;
+  }
+
+  function onCustomerCsvSelected(e) {
+    const file = e?.target?.files?.[0];
+    const alert = document.getElementById('customerSyncAlert');
+    const previewArea = document.getElementById('customerSyncPreviewArea');
+    const previewBody = document.getElementById('customerSyncPreviewBody');
+    const summaryEl = document.getElementById('customerSyncSummary');
+    const confirmBtn = document.getElementById('confirmCustomerSyncBtn');
+
+    if (alert) {
+      alert.className = 'form-alert';
+      alert.innerText = '';
+    }
+    pendingCustomerSyncPreview = null;
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    if (!file) {
+      if (previewArea) previewArea.style.display = 'none';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target.result || '';
+        const preview = CFM_FIREBASE.previewCustomerSync(text);
+        if (!preview || preview.parsedCount === 0) {
+          if (alert) {
+            alert.className = 'form-alert error';
+            alert.innerText = 'No valid customer records were found in this CSV file. Please check the file format.';
+          }
+          if (previewArea) previewArea.style.display = 'none';
+          return;
+        }
+
+        pendingCustomerSyncPreview = preview;
+        const addedCount = preview.added.length;
+        const updatedCount = preview.updated.length;
+
+        if (summaryEl) {
+          summaryEl.innerHTML = `Parsed <strong>${preview.parsedCount.toLocaleString()}</strong> rows from CSV: <span style="color:#16a34a;">+${addedCount} New</span> &middot; <span style="color:#2563eb;">${updatedCount} Updated</span> &middot; <span style="color:var(--muted);">${preview.unchangedCount.toLocaleString()} Unchanged</span>`;
+        }
+
+        const rowsHtml = [];
+        preview.added.forEach(c => {
+          const [name, contact, phone, , salesRep, , acct] = c;
+          const contactInfo = [contact, phone].filter(Boolean).join(' · ') || '—';
+          rowsHtml.push(`
+            <tr>
+              <td><span style="color:#16a34a; font-weight:700;">+ NEW</span></td>
+              <td><strong>${escapeHtml(acct)}</strong></td>
+              <td>${escapeHtml(name)}</td>
+              <td>${escapeHtml(salesRep || 'Inside Sales')}</td>
+              <td style="font-size:12px; color:var(--muted);">${escapeHtml(contactInfo)}</td>
+            </tr>
+          `);
+        });
+
+        preview.updated.forEach(u => {
+          const [name, contact, phone, , salesRep, , acct] = u.after;
+          const contactInfo = [contact, phone].filter(Boolean).join(' · ') || '—';
+          rowsHtml.push(`
+            <tr>
+              <td><span style="color:#2563eb; font-weight:700;">↻ UPDATED</span></td>
+              <td><strong>${escapeHtml(acct)}</strong></td>
+              <td>${escapeHtml(name)}</td>
+              <td>${escapeHtml(salesRep || 'Inside Sales')}</td>
+              <td style="font-size:12px; color:var(--muted);">${escapeHtml(contactInfo)}</td>
+            </tr>
+          `);
+        });
+
+        if (rowsHtml.length === 0) {
+          rowsHtml.push(`<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--muted);">All ${preview.parsedCount.toLocaleString()} customers in this file are already up to date!</td></tr>`);
+        }
+
+        if (previewBody) previewBody.innerHTML = rowsHtml.join('');
+        if (previewArea) previewArea.style.display = 'block';
+        if (confirmBtn) confirmBtn.disabled = (addedCount === 0 && updatedCount === 0);
+      } catch (err) {
+        if (alert) {
+          alert.className = 'form-alert error';
+          alert.innerText = 'Failed to parse CSV: ' + (err.message || err);
+        }
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleConfirmCustomerSync() {
+    if (!pendingCustomerSyncPreview) return;
+    const confirmBtn = document.getElementById('confirmCustomerSyncBtn');
+    const alert = document.getElementById('customerSyncAlert');
+    const oldText = confirmBtn ? confirmBtn.innerText : 'Confirm & Sync to Cloud';
+
+    try {
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = '⏳ Syncing to Cloud...';
+      }
+      const changeCount = pendingCustomerSyncPreview.added.length + pendingCustomerSyncPreview.updated.length;
+      await CFM_FIREBASE.saveCustomerSync(pendingCustomerSyncPreview.syncRecords, changeCount);
+      showToast(`Synced ${ pendingCustomerSyncPreview.added.length } new and ${ pendingCustomerSyncPreview.updated.length } updated customers to Cloud Firestore!`, 'success');
+      closeCustomerSyncModal();
+    } catch (err) {
+      if (alert) {
+        alert.className = 'form-alert error';
+        alert.innerText = 'Cloud sync failed: ' + (err.message || err);
+      }
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+      }
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.innerText = oldText;
+      }
+    }
+  }
+
   // Close modals on clicking outside backdrop
   document.addEventListener('click', (e) => {
     if (e.target && e.target.classList.contains('modal-backdrop')) {
@@ -464,6 +632,10 @@
   window.handleDuplicateQuote = handleDuplicateQuote;
   window.handleDeleteQuote = handleDeleteQuote;
   window.onSaveQuoteClicked = handleSaveQuote;
+  window.openCustomerSyncModal = openCustomerSyncModal;
+  window.closeCustomerSyncModal = closeCustomerSyncModal;
+  window.onCustomerCsvSelected = onCustomerCsvSelected;
+  window.handleConfirmCustomerSync = handleConfirmCustomerSync;
   window.refreshAuthUI = refreshAuthUI;
   window.showToast = showToast;
 

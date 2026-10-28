@@ -4,14 +4,72 @@
 // Paste these rules in your Firebase Console:
 // Build -> Firestore Database -> Rules -> Publish
 // ==============================================================================
+//
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// Collection: quotes
+// Document ID: {quoteId}
+// Fields:
+//   - user_id: string (required, immutable owner UID) - UID of the quote owner
+//   - [additional quote fields managed by the owner]
+//
+// Collection: customer_sync
+// Document ID: 'latest'
+// Fields:
+//   - customers_json: string (required, size <= 950000) - serialized JSON array of customers
+//   - updated_at: string (required, size <= 64) - ISO timestamp of last sync
+//   - updated_by: string (required, size <= 200) - identifier/email of user who synced
+//   - total_count: int (required, >= 0) - total number of customers in payload
+//   - new_count: int (optional, >= 0) - number of newly added/updated customers in sync
+//
+// ===============================================================
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidCustomerSync(data) {
+      return hasRequiredFields(['customers_json', 'updated_at', 'updated_by', 'total_count']) &&
+             hasOnlyAllowedFields(['customers_json', 'updated_at', 'updated_by', 'total_count', 'new_count']) &&
+             data.customers_json is string && data.customers_json.size() <= 950000 &&
+             data.updated_at is string && data.updated_at.size() <= 64 &&
+             data.updated_by is string && data.updated_by.size() <= 200 &&
+             data.total_count is int && data.total_count >= 0 &&
+             (!('new_count' in data) || (data.new_count is int && data.new_count >= 0));
+    }
+
     // Quotes collection: Users can only read, create, update, and delete their own quotes
     match /quotes/{quoteId} {
       allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
     }
+
+    // Customer Sync collection: Authenticated users can read and write the shared 'latest' customer sync document
+    match /customer_sync/{docId} {
+      allow read: if isAuthenticated() && docId == 'latest';
+      allow create, update: if isAuthenticated() && docId == 'latest' && isValidCustomerSync(request.resource.data);
+      allow delete: if false;
+    }
   }
 }
+

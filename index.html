@@ -434,6 +434,7 @@
           <!-- Populated by firebase-ui.js -->
         </div>
         <div class="top-toolbar-right">
+          <button type="button" class="btn-sm" onclick="openCustomerSyncModal()" title="Import NetSuite Customer CSV and sync to Cloud Firestore">🔄 Sync Customers</button>
           <button type="button" class="btn-sm btn-primary" onclick="openQuotesModal()">📂 My Quotes</button>
           <button type="button" class="btn-sm theme-toggle" id="themeToggle" onclick="toggleDarkMode()" aria-pressed="false">☾ Dark Mode</button>
         </div>
@@ -717,7 +718,8 @@
         document.body.classList.remove('cost-export');
       }
       
-      document.title = document.getElementById('quoteNumRef').value + ' - ' + (document.getElementById('customerSearch').value || 'Quote');
+      const baseTitle = document.getElementById('quoteNumRef').value + ' - ' + (document.getElementById('customerSearch').value.trim() || 'Quote');
+      document.title = baseTitle + (cost ? ' - Cost' : ' - cfm Distributors Inc');
       
       setTimeout(() => {
         window.print();
@@ -963,6 +965,46 @@
             </div>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. NetSuite Customer Sync Modal -->
+  <div class="modal-backdrop" id="customerSyncModal">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <h3 class="modal-title">🔄 Sync NetSuite Customers</h3>
+        <button type="button" class="modal-close" onclick="closeCustomerSyncModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="customerSyncStatusLine" style="font-size: 13px; color: var(--muted); margin-bottom: 12px;"></div>
+        <div id="customerSyncAlert" class="form-alert"></div>
+        <div class="form-group">
+          <label for="customerCsvInput">Select NetSuite Customer Export (.csv)</label>
+          <input type="file" id="customerCsvInput" accept=".csv,text/csv" onchange="onCustomerCsvSelected(event)" style="width: 100%; padding: 10px;">
+          <div class="form-help">Supports NetSuite "cfm Current Customer List" reports (e.g. <code>report.csv</code>) and Customer Saved Search exports.</div>
+        </div>
+        <div id="customerSyncPreviewArea" style="display: none; margin-top: 16px;">
+          <div id="customerSyncSummary" style="font-weight: 700; margin-bottom: 10px; font-size: 14px;"></div>
+          <div style="overflow-x: auto; max-height: 40vh; border: 1px solid var(--line); border-radius: 6px;">
+            <table class="quotes-list-table">
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Change</th>
+                  <th style="width: 15%;">Account #</th>
+                  <th style="width: 35%;">Customer Name</th>
+                  <th style="width: 20%;">Sales Rep</th>
+                  <th style="width: 15%;">Phone / Contact</th>
+                </tr>
+              </thead>
+              <tbody id="customerSyncPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-sm" onclick="closeCustomerSyncModal()">Cancel</button>
+        <button type="button" id="confirmCustomerSyncBtn" class="btn-sm btn-success" onclick="handleConfirmCustomerSync()" disabled>Confirm &amp; Sync to Cloud</button>
       </div>
     </div>
   </div>

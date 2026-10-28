@@ -120,6 +120,9 @@
           if (typeof window.refreshAuthUI === 'function') {
             window.refreshAuthUI();
           }
+          if (currentUser) {
+            loadCustomerSync().catch(e => console.warn('Customer cloud sync check skipped:', e.message));
+          }
         }, (err) => {
           console.warn('Firebase Auth state error:', err);
           currentUser = null;
@@ -532,6 +535,330 @@
     }
   }
 
+  // --- NetSuite Customer CSV Parser & Cloud Sync ---
+  const CUSTOMER_CACHE_KEY = 'cfm_customer_sync_v1';
+  let lastCustomerSyncMeta = null;
+  let cachedSyncRecords = [];
+
+  function parseCSVLine(line) {
+    const res = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          cur += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          res.push(cur.trim());
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+    }
+    res.push(cur.trim());
+    return res;
+  }
+
+  function parseNetSuiteCSV(csvText) {
+    if (!csvText || typeof csvText !== 'string') return [];
+    const lines = csvText.split(/\r?\n/);
+
+    // Detect header row (or default to standard NetSuite Current Customer List report layout)
+    let headerIdx = -1;
+    let colMap = { customer: 0, acct: -1, contact: -1, phone: -1, email: -1, salesRep: 1, status: -1 };
+
+    for (let i = 0; i < Math.min(lines.length, 25); i++) {
+      const cols = parseCSVLine(lines[i]).map(c => c.toLowerCase().trim());
+      if (cols.length >= 2 && (cols.includes('customer') || cols.includes('name') || cols.includes('company name') || cols.includes('id'))) {
+        headerIdx = i;
+        colMap = {
+          customer: cols.findIndex(c => c === 'customer' || c === 'name' || c === 'company name'),
+          acct: cols.findIndex(c => c === 'account' || c === 'account number' || c === 'account #' || c === 'id' || c === 'entity id'),
+          contact: cols.findIndex(c => c.includes('contact')),
+          phone: cols.findIndex(c => c.includes('phone')),
+          email: cols.findIndex(c => c.includes('email') || c.includes('e-mail')),
+          salesRep: cols.findIndex(c => c.includes('sales rep') || c === 'rep'),
+          status: cols.findIndex(c => c.includes('status') || c.includes('stage'))
+        };
+        if (colMap.customer === -1 && colMap.acct !== -1) {
+          colMap.customer = colMap.acct;
+        }
+        break;
+      }
+    }
+
+    const byAcct = new Map();
+    const startRow = headerIdx !== -1 ? headerIdx + 1 : 0;
+
+    for (let i = startRow; i < lines.length; i++) {
+      const rawLine = lines[i].trim();
+      if (!rawLine) continue;
+
+      const cols = parseCSVLine(rawLine);
+      const rawCust = (cols[colMap.customer >= 0 ? colMap.customer : 0] || '').trim();
+      if (!rawCust) continue;
+
+      // Skip NetSuite report title, date range, header, and summary rows
+      if (
+        /^total\s*-/i.test(rawCust) ||
+        /^total$/i.test(rawCust) ||
+        /^customer$/i.test(rawCust) ||
+        /^cfm\s+(distributors|current customer)/i.test(rawCust) ||
+        /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d+/i.test(rawCust)
+      ) {
+        continue;
+      }
+
+      let acct = (colMap.acct >= 0 && colMap.acct !== colMap.customer ? (cols[colMap.acct] || '').trim() : '');
+      let name = rawCust;
+
+      // NetSuite Current Customer List combines "<Account #> <Customer Name>" in column 0
+      const prefixMatch = rawCust.match(/^([A-Z0-9]+(?::\d+)?)\s+(.+)$/i);
+      if (!acct && prefixMatch) {
+        acct = prefixMatch[1].trim();
+        name = prefixMatch[2].trim();
+      } else if (acct && name.toUpperCase().startsWith(acct.toUpperCase() + ' ')) {
+        name = name.slice(acct.length).trim();
+      }
+
+      if (!acct || !name) continue;
+
+      const contact = colMap.contact >= 0 ? (cols[colMap.contact] || '').trim() : '';
+      const phone = colMap.phone >= 0 ? (cols[colMap.phone] || '').trim() : '';
+      const email = colMap.email >= 0 ? (cols[colMap.email] || '').trim() : '';
+      const salesRep = colMap.salesRep >= 0 ? (cols[colMap.salesRep] || '').trim() : '';
+      const status = (colMap.status >= 0 ? (cols[colMap.status] || '').trim() : '') || 'CUSTOMER-Active';
+
+      const key = acct.toUpperCase();
+      if (byAcct.has(key)) {
+        // Merge duplicate parent/child rows in NetSuite report
+        const prev = byAcct.get(key);
+        if (!prev[0] && name) prev[0] = name;
+        if (!prev[1] && contact) prev[1] = contact;
+        if (!prev[2] && phone) prev[2] = phone;
+        if (!prev[3] && email) prev[3] = email;
+        if (!prev[4] && salesRep) prev[4] = salesRep;
+        if ((!prev[5] || prev[5] === 'CUSTOMER-Active') && status) prev[5] = status;
+      } else {
+        byAcct.set(key, [name, contact, phone, email, salesRep, status, acct]);
+      }
+    }
+
+    return Array.from(byAcct.values());
+  }
+
+  function applyCustomerSyncRecords(records) {
+    if (typeof CUSTOMERS === 'undefined' || !Array.isArray(CUSTOMERS) || !Array.isArray(records)) return;
+
+    const byAcct = new Map();
+    CUSTOMERS.forEach(c => {
+      if (c && c[6]) byAcct.set(String(c[6]).toUpperCase(), c);
+    });
+
+    records.forEach(r => {
+      if (!Array.isArray(r) || !r[6]) return;
+      const key = String(r[6]).toUpperCase();
+      if (byAcct.has(key)) {
+        const existing = byAcct.get(key);
+        if (r[0]) existing[0] = r[0];
+        if (r[1]) existing[1] = r[1];
+        if (r[2]) existing[2] = r[2];
+        if (r[3]) existing[3] = r[3];
+        if (r[4]) existing[4] = r[4];
+        if (r[5]) existing[5] = r[5];
+      } else {
+        const newEntry = [
+          r[0] || '',
+          r[1] || '',
+          r[2] || '',
+          r[3] || '',
+          r[4] || 'Inside Sales',
+          r[5] || 'CUSTOMER-Active',
+          r[6]
+        ];
+        CUSTOMERS.push(newEntry);
+        byAcct.set(key, newEntry);
+      }
+    });
+
+    CUSTOMERS.sort((a, b) => String(a[0] || '').toLowerCase().localeCompare(String(b[0] || '').toLowerCase()));
+  }
+
+  function previewCustomerSync(csvText) {
+    const parsed = parseNetSuiteCSV(csvText);
+    const currentList = (typeof CUSTOMERS !== 'undefined' && Array.isArray(CUSTOMERS)) ? CUSTOMERS : [];
+    const existingByAcct = new Map();
+    currentList.forEach(c => {
+      if (c && c[6]) existingByAcct.set(String(c[6]).toUpperCase(), c);
+    });
+
+    const added = [];
+    const updated = [];
+    let unchangedCount = 0;
+
+    parsed.forEach(row => {
+      const [name, contact, phone, email, salesRep, status, acct] = row;
+      const key = String(acct).toUpperCase();
+      if (!existingByAcct.has(key)) {
+        added.push([name, contact, phone, email, salesRep || 'Inside Sales', status || 'CUSTOMER-Active', acct]);
+      } else {
+        const ex = existingByAcct.get(key);
+        const nameChanged = Boolean(name && name !== ex[0]);
+        const contactChanged = Boolean(contact && contact !== ex[1]);
+        const phoneChanged = Boolean(phone && phone !== ex[2]);
+        const emailChanged = Boolean(email && email !== ex[3]);
+        const repChanged = Boolean(salesRep && salesRep !== ex[4]);
+
+        if (nameChanged || contactChanged || phoneChanged || emailChanged || repChanged) {
+          updated.push({
+            before: [...ex],
+            after: [
+              name || ex[0],
+              contact || ex[1],
+              phone || ex[2],
+              email || ex[3],
+              salesRep || ex[4],
+              status || ex[5],
+              ex[6]
+            ]
+          });
+        } else {
+          unchangedCount++;
+        }
+      }
+    });
+
+    // Combine previously synced records with newly added/updated records
+    const combinedByAcct = new Map();
+    cachedSyncRecords.forEach(r => {
+      if (r && r[6]) combinedByAcct.set(String(r[6]).toUpperCase(), r);
+    });
+    added.forEach(r => combinedByAcct.set(String(r[6]).toUpperCase(), r));
+    updated.forEach(u => combinedByAcct.set(String(u.after[6]).toUpperCase(), u.after));
+
+    return {
+      parsedCount: parsed.length,
+      added,
+      updated,
+      unchangedCount,
+      syncRecords: Array.from(combinedByAcct.values())
+    };
+  }
+
+  function loadLocalCustomerCache() {
+    try {
+      const raw = localStorage.getItem(CUSTOMER_CACHE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.records)) {
+        cachedSyncRecords = parsed.records;
+        lastCustomerSyncMeta = parsed.meta || null;
+        applyCustomerSyncRecords(cachedSyncRecords);
+      }
+    } catch (e) {
+      console.warn('Could not load cached customer sync:', e);
+    }
+  }
+
+  async function loadCustomerSync() {
+    loadLocalCustomerCache();
+    if (!db || !currentUser) return lastCustomerSyncMeta;
+
+    try {
+      const doc = await db.collection('customer_sync').doc('latest').get();
+      if (!doc.exists) return lastCustomerSyncMeta;
+
+      const data = doc.data();
+      const records = JSON.parse(data.customers_json || '[]');
+      cachedSyncRecords = Array.isArray(records) ? records : [];
+      lastCustomerSyncMeta = {
+        updated_at: data.updated_at || '',
+        updated_by: data.updated_by || '',
+        total_count: data.total_count || 0,
+        new_count: data.new_count || 0
+      };
+
+      try {
+        localStorage.setItem(CUSTOMER_CACHE_KEY, JSON.stringify({
+          meta: lastCustomerSyncMeta,
+          records: cachedSyncRecords
+        }));
+      } catch (_) {}
+
+      applyCustomerSyncRecords(cachedSyncRecords);
+      return lastCustomerSyncMeta;
+    } catch (err) {
+      console.warn('Could not fetch customer_sync/latest:', err.message);
+      return lastCustomerSyncMeta;
+    }
+  }
+
+  async function saveCustomerSync(syncRecords, newCount = 0) {
+    if (!db) throw new Error('Firebase is not configured yet.');
+    if (!currentUser) throw new Error('Please log in first to sync customers to Cloud Firestore.');
+
+    const nowIso = new Date().toISOString();
+    const { name, email } = getUserProfile(currentUser);
+    const updatedBy = name ? `${name} (${email})` : (email || 'User');
+
+    // Merge with any existing cachedSyncRecords
+    const mergedMap = new Map();
+    cachedSyncRecords.forEach(r => {
+      if (r && r[6]) mergedMap.set(String(r[6]).toUpperCase(), r);
+    });
+    (syncRecords || []).forEach(r => {
+      if (r && r[6]) mergedMap.set(String(r[6]).toUpperCase(), r);
+    });
+    const finalRecords = Array.from(mergedMap.values());
+
+    applyCustomerSyncRecords(finalRecords);
+    const totalCustomersNow = (typeof CUSTOMERS !== 'undefined' && Array.isArray(CUSTOMERS)) ? CUSTOMERS.length : finalRecords.length;
+
+    const payload = {
+      customers_json: JSON.stringify(finalRecords),
+      updated_at: nowIso,
+      updated_by: updatedBy.slice(0, 200),
+      total_count: totalCustomersNow,
+      new_count: Number(newCount) || 0
+    };
+
+    try {
+      await db.collection('customer_sync').doc('latest').set(payload);
+      cachedSyncRecords = finalRecords;
+      lastCustomerSyncMeta = {
+        updated_at: payload.updated_at,
+        updated_by: payload.updated_by,
+        total_count: payload.total_count,
+        new_count: payload.new_count
+      };
+      try {
+        localStorage.setItem(CUSTOMER_CACHE_KEY, JSON.stringify({
+          meta: lastCustomerSyncMeta,
+          records: cachedSyncRecords
+        }));
+      } catch (_) {}
+      return lastCustomerSyncMeta;
+    } catch (err) {
+      throw new Error(formatFirebaseError(err));
+    }
+  }
+
+  // Apply local cache immediately on script load
+  loadLocalCustomerCache();
+
   // Save config into localStorage
   function updateConfig(configObj) {
     const cleaned = {
@@ -577,6 +904,11 @@
     loadQuote,
     deleteQuote,
     startNewQuote,
+    parseNetSuiteCSV,
+    previewCustomerSync,
+    loadCustomerSync,
+    saveCustomerSync,
+    getCustomerSyncMeta: () => lastCustomerSyncMeta,
     getActiveQuoteId: () => activeQuoteId,
     setActiveQuoteId: (id) => { activeQuoteId = id; },
     getCurrentUser: () => currentUser

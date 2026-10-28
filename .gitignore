@@ -4,6 +4,7 @@
 .env.*.local
 firebase-config.local.js
 *Integration Info.txt
+*.csv
 
 # OS & Editor artifacts
 .DS_Store
