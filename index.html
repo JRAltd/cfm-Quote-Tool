@@ -212,19 +212,22 @@
       color: var(--text);
     }
     .noPrint.action-buttons {
-      display: flex;
-      align-items: center;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      flex-wrap: wrap;
       width: 100%;
       margin: 20px 0 28px 0;
-      justify-content: space-between;
     }
     .noPrint.action-buttons button {
       margin: 0;
-      flex: 1 1 0;
-      min-width: 140px;
-      padding: 12px 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 10px 16px;
+      line-height: 1.2;
+      text-align: center;
       background: var(--navy);
       color: #ffffff;
       border: none;
@@ -233,6 +236,11 @@
       font-weight: 700;
       font-size: 14px;
       transition: all 0.2s ease;
+    }
+    @media (max-width: 640px) {
+      .noPrint.action-buttons {
+        grid-template-columns: 1fr;
+      }
     }
     .noPrint.action-buttons button:hover {
       background: var(--dark);
