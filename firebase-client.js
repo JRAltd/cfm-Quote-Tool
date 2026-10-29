@@ -122,6 +122,7 @@
           }
           if (currentUser) {
             loadCustomerSync().catch(e => console.warn('Customer cloud sync check skipped:', e.message));
+            syncQuoteCounter().catch(e => console.warn('Quote counter sync skipped:', e.message));
           }
         }, (err) => {
           console.warn('Firebase Auth state error:', err);
@@ -417,6 +418,48 @@
   }
 
   // --- Cloud Firestore CRUD ---
+  function bumpQuoteCounterAtLeast(minNextNum, updateInputIfNew = false) {
+    const target = parseInt(minNextNum, 10);
+    if (!Number.isFinite(target) || target < 10001) return;
+    try {
+      const stored = parseInt(localStorage.getItem('cfm_quote_counter'), 10) || 10020;
+      const next = Math.max(stored, target, 10020);
+      localStorage.setItem('cfm_quote_counter', next);
+      if (updateInputIfNew && !activeQuoteId) {
+        const inputEl = document.getElementById('quoteNumRef');
+        if (inputEl) {
+          const curVal = parseInt(inputEl.value, 10) || 0;
+          if (curVal < next) {
+            inputEl.value = next;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  async function syncQuoteCounter() {
+    if (!db || !currentUser) return;
+    try {
+      const snapshot = await db
+        .collection('quotes')
+        .where('user_id', '==', currentUser.uid)
+        .get();
+
+      let maxQuoteNum = 10019;
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const n = parseInt(d.quote_number, 10);
+        if (Number.isFinite(n) && n > maxQuoteNum) {
+          maxQuoteNum = n;
+        }
+      });
+
+      bumpQuoteCounterAtLeast(maxQuoteNum + 1, true);
+    } catch (err) {
+      console.warn('Could not sync quote counter from Cloud Firestore:', err.message);
+    }
+  }
+
   async function saveQuote() {
     if (!db) throw new Error('Firebase is not configured yet.');
     if (!currentUser) throw new Error('Please log in first to save quotes.');
@@ -427,6 +470,11 @@
     quotePayload.updated_at = nowIso;
 
     try {
+      const savedNum = parseInt(quotePayload.quote_number, 10);
+      if (Number.isFinite(savedNum) && savedNum >= 10001) {
+        bumpQuoteCounterAtLeast(savedNum + 1, false);
+      }
+
       if (activeQuoteId) {
         // Update existing quote document in Firestore
         const docRef = db.collection('quotes').doc(activeQuoteId);
@@ -461,8 +509,13 @@
         .get();
 
       let results = [];
+      let maxQuoteNum = 10019;
       snapshot.forEach(doc => {
         const d = doc.data();
+        const n = parseInt(d.quote_number, 10);
+        if (Number.isFinite(n) && n > maxQuoteNum) {
+          maxQuoteNum = n;
+        }
         results.push({
           id: doc.id,
           quote_number: d.quote_number || '',
@@ -475,6 +528,8 @@
           created_at: d.created_at || ''
         });
       });
+
+      bumpQuoteCounterAtLeast(maxQuoteNum + 1, true);
 
       // Sort by updated_at descending in memory (avoids requiring manual composite index creation in Firestore)
       results.sort((a, b) => {
@@ -907,6 +962,7 @@
     loadQuote,
     deleteQuote,
     startNewQuote,
+    syncQuoteCounter,
     parseNetSuiteCSV,
     previewCustomerSync,
     loadCustomerSync,

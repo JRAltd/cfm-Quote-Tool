@@ -673,6 +673,8 @@
       document.getElementById('tot').innerText = money(total + f);
     }
     
+    const MIN_QUOTE_NUM = 10020;
+
     // Allows you to manually type a number in the box to overwrite the saved counter
     function manualQuoteOverride(val) {
       const n = parseInt(val, 10);
@@ -682,13 +684,21 @@
     }
     
     function quote(advance = false) {
-      let n = 10001;
+      let n = MIN_QUOTE_NUM;
       try {
         let stored = parseInt(localStorage.getItem('cfm_quote_counter'), 10);
-        if (Number.isFinite(stored) && stored >= 10001) n = stored;
+        if (Number.isFinite(stored) && stored >= MIN_QUOTE_NUM) {
+          n = stored;
+        } else {
+          localStorage.setItem('cfm_quote_counter', n);
+        }
         if (advance) {
-            n++;
-            localStorage.setItem('cfm_quote_counter', n);
+          const currentInput = parseInt(document.getElementById('quoteNumRef')?.value, 10);
+          if (Number.isFinite(currentInput) && currentInput > n) {
+            n = currentInput;
+          }
+          n++;
+          localStorage.setItem('cfm_quote_counter', n);
         }
       } catch(e) {
         if(advance) n++;
@@ -745,7 +755,11 @@
       
       // If we clicked Download PDF, advance will be true. This updates the counter and visually changes the box!
       if (advance) {
-        setQuote(true); 
+        if (window.CFM_FIREBASE && window.CFM_FIREBASE.getActiveQuoteId()) {
+          quote(true);
+        } else {
+          setQuote(true); 
+        }
       }
     }
     
@@ -824,6 +838,9 @@
       if (window.refreshAuthUI) refreshAuthUI();
       if (window.applyUserToQuotedBy) applyUserToQuotedBy(true);
       init();
+      if (window.CFM_FIREBASE && typeof window.CFM_FIREBASE.syncQuoteCounter === 'function') {
+        window.CFM_FIREBASE.syncQuoteCounter();
+      }
       addRow();
       calc();
     }
